@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pixelfox_mobile/services/backup_ledger.dart';
-import 'package:pixelfox_mobile/services/file_scanner.dart';
-import 'package:pixelfox_mobile/services/storage.dart';
+import 'package:fotoly_mobile/services/backup_ledger.dart';
+import 'package:fotoly_mobile/services/file_scanner.dart';
+import 'package:fotoly_mobile/services/storage.dart';
 
 void main() {
   test('marks uploads and skips same path+size', () async {

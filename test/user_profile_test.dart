@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pixelfox_mobile/models/user_profile.dart';
+import 'package:fotoly_mobile/models/user_profile.dart';
 
 void main() {
   test('parses storage usage from profile fixture', () {

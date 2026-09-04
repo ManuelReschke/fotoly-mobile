@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pixelfox_mobile/l10n/locale_controller.dart';
-import 'package:pixelfox_mobile/screens/login_screen.dart';
-import 'package:pixelfox_mobile/services/auth_service.dart';
-import 'package:pixelfox_mobile/services/pixelfox_api_client.dart';
-import 'package:pixelfox_mobile/services/storage.dart';
+import 'package:fotoly_mobile/l10n/locale_controller.dart';
+import 'package:fotoly_mobile/screens/login_screen.dart';
+import 'package:fotoly_mobile/services/auth_service.dart';
+import 'package:fotoly_mobile/services/pixelfox_api_client.dart';
+import 'package:fotoly_mobile/services/storage.dart';
 import 'package:provider/provider.dart';
 
 import 'fake_api_http.dart';

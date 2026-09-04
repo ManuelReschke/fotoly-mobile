@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pixelfox_mobile/models/pixelfox_image.dart';
+import 'package:fotoly_mobile/models/pixelfox_image.dart';
 
 void main() {
   late Map<String, dynamic> fixture;

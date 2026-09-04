@@ -1,9 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pixelfox_mobile/models/backup_status.dart';
-import 'package:pixelfox_mobile/services/gallery_service.dart';
-import 'package:pixelfox_mobile/services/pixelfox_api_client.dart';
+import 'package:fotoly_mobile/models/backup_status.dart';
+import 'package:fotoly_mobile/services/gallery_service.dart';
+import 'package:fotoly_mobile/services/pixelfox_api_client.dart';
 
 import 'fake_api_http.dart';
 

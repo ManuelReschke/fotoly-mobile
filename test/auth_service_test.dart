@@ -1,10 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pixelfox_mobile/config/app_brand.dart';
-import 'package:pixelfox_mobile/services/auth_service.dart';
-import 'package:pixelfox_mobile/services/pixelfox_api_client.dart';
-import 'package:pixelfox_mobile/services/storage.dart';
+import 'package:fotoly_mobile/config/app_brand.dart';
+import 'package:fotoly_mobile/services/auth_service.dart';
+import 'package:fotoly_mobile/services/pixelfox_api_client.dart';
+import 'package:fotoly_mobile/services/storage.dart';
 
 import 'fake_api_http.dart';
 

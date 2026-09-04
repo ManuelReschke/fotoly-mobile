@@ -99,7 +99,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pixelfox_mobile/models/pixelfox_image.dart';
+import 'package:fotoly_mobile/models/pixelfox_image.dart';
 
 void main() {
   late Map<String, dynamic> fixture;
@@ -453,9 +453,9 @@ Create `test/gallery_service_test.dart`:
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pixelfox_mobile/models/backup_status.dart';
-import 'package:pixelfox_mobile/services/gallery_service.dart';
-import 'package:pixelfox_mobile/services/pixelfox_api_client.dart';
+import 'package:fotoly_mobile/models/backup_status.dart';
+import 'package:fotoly_mobile/services/gallery_service.dart';
+import 'package:fotoly_mobile/services/pixelfox_api_client.dart';
 
 import 'fake_api_http.dart';
 
@@ -916,11 +916,11 @@ git commit -m "feat(gallery): cache stable_url images on disk"
 ```dart
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pixelfox_mobile/l10n/locale_controller.dart';
-import 'package:pixelfox_mobile/screens/gallery_screen.dart';
-import 'package:pixelfox_mobile/services/gallery_service.dart';
-import 'package:pixelfox_mobile/services/pixelfox_api_client.dart';
-import 'package:pixelfox_mobile/services/storage.dart';
+import 'package:fotoly_mobile/l10n/locale_controller.dart';
+import 'package:fotoly_mobile/screens/gallery_screen.dart';
+import 'package:fotoly_mobile/services/gallery_service.dart';
+import 'package:fotoly_mobile/services/pixelfox_api_client.dart';
+import 'package:fotoly_mobile/services/storage.dart';
 import 'package:provider/provider.dart';
 
 import 'fake_api_http.dart';

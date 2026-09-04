@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pixelfox_mobile/utils/gravatar.dart';
+import 'package:fotoly_mobile/utils/gravatar.dart';
 
 void main() {
   test(

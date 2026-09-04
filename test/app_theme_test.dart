@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pixelfox_mobile/config/app_brand.dart';
-import 'package:pixelfox_mobile/theme/app_theme.dart';
+import 'package:fotoly_mobile/config/app_brand.dart';
+import 'package:fotoly_mobile/theme/app_theme.dart';
 
 void main() {
   tearDown(AppBrand.debugReset);

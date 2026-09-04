@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pixelfox_mobile/config/api_config.dart';
-import 'package:pixelfox_mobile/config/app_brand.dart';
-import 'package:pixelfox_mobile/config/app_info.dart';
-import 'package:pixelfox_mobile/l10n/app_strings_de.dart';
-import 'package:pixelfox_mobile/l10n/app_strings_en.dart';
-import 'package:pixelfox_mobile/theme/app_theme.dart';
+import 'package:fotoly_mobile/config/api_config.dart';
+import 'package:fotoly_mobile/config/app_brand.dart';
+import 'package:fotoly_mobile/config/app_info.dart';
+import 'package:fotoly_mobile/l10n/app_strings_de.dart';
+import 'package:fotoly_mobile/l10n/app_strings_en.dart';
+import 'package:fotoly_mobile/theme/app_theme.dart';
 
 void main() {
   tearDown(AppBrand.debugReset);

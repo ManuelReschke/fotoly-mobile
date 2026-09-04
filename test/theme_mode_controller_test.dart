@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pixelfox_mobile/services/storage.dart';
-import 'package:pixelfox_mobile/theme/app_theme.dart';
-import 'package:pixelfox_mobile/theme/theme_mode_controller.dart';
+import 'package:fotoly_mobile/services/storage.dart';
+import 'package:fotoly_mobile/theme/app_theme.dart';
+import 'package:fotoly_mobile/theme/theme_mode_controller.dart';
 import 'package:provider/provider.dart';
 
 void main() {

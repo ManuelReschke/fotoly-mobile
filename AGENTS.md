@@ -8,7 +8,7 @@ Flutter app for [fotoly.eu](https://fotoly.eu): back up photos from selected loc
 
 This is the Fotoly white-label of pixelfox-mobile. **Fotoly is the default flavor** (Schiefer theme, `https://fotoly.eu`). PixelFox remains `FLAVOR=pixelfox`.
 
-- Package: `pixelfox_mobile` (Dart SDK `^3.12.2`) — shared package name with the PixelFox app
+- Package: `fotoly_mobile` (Dart SDK `^3.12.2`)
 - Platforms: Android, iOS, Web, Linux desktop
 - API: `https://fotoly.eu/api/v1` (see `lib/config/api_config.dart`)
 - Auth: email/password or social login (app session `Authorization: Bearer pxls_…`); API key (`X-API-Key`) remains an advanced fallback. Credentials are stored via `flutter_secure_storage`.

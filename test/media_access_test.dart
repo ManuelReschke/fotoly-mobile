@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:pixelfox_mobile/services/media_access.dart';
+import 'package:fotoly_mobile/services/media_access.dart';
 
 void main() {
   test('desktop/web path is not required', () async {

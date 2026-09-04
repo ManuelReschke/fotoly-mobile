@@ -68,8 +68,8 @@ Create `test/theme_mode_controller_test.dart`:
 ```dart
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pixelfox_mobile/services/storage.dart';
-import 'package:pixelfox_mobile/theme/theme_mode_controller.dart';
+import 'package:fotoly_mobile/services/storage.dart';
+import 'package:fotoly_mobile/theme/theme_mode_controller.dart';
 
 void main() {
   test('fromCode default is system; garbage is light', () {
@@ -234,7 +234,7 @@ Create `test/app_theme_test.dart`:
 ```dart
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pixelfox_mobile/theme/app_theme.dart';
+import 'package:fotoly_mobile/theme/app_theme.dart';
 
 void main() {
   test('light and dark themes have opposite brightness and distinct cards', () {
@@ -506,7 +506,7 @@ Append to `test/theme_mode_controller_test.dart`:
   });
 ```
 
-Add imports: `package:pixelfox_mobile/theme/app_theme.dart`, `package:provider/provider.dart`.
+Add imports: `package:fotoly_mobile/theme/app_theme.dart`, `package:provider/provider.dart`.
 
 - [ ] **Step 2: Run test to verify it fails**
 

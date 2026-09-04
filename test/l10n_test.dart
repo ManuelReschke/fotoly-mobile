@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pixelfox_mobile/l10n/app_strings_de.dart';
-import 'package:pixelfox_mobile/l10n/app_strings_en.dart';
-import 'package:pixelfox_mobile/l10n/locale_controller.dart';
-import 'package:pixelfox_mobile/services/storage.dart';
+import 'package:fotoly_mobile/l10n/app_strings_de.dart';
+import 'package:fotoly_mobile/l10n/app_strings_en.dart';
+import 'package:fotoly_mobile/l10n/locale_controller.dart';
+import 'package:fotoly_mobile/services/storage.dart';
 
 void main() {
   test('default locale is German', () {

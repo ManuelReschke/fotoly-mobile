@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:pixelfox_mobile/services/pixelfox_api_client.dart';
+import 'package:fotoly_mobile/services/pixelfox_api_client.dart';
 
 /// Fake network layer — only outside the client under test.
 class FakeApiHttp implements ApiHttp {

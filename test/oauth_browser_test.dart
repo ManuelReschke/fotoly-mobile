@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pixelfox_mobile/services/oauth_browser.dart';
+import 'package:fotoly_mobile/services/oauth_browser.dart';
 
 void main() {
   test('openOAuthSession returns the matching callback URI', () async {

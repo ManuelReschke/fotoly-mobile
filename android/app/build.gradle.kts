@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "cc.pixelfox.pixelfox_mobile"
+    namespace = "eu.fotoly.fotoly_mobile"
     // permission_handler_android requires API 37+ (backward compatible).
     compileSdk = 37
     ndkVersion = flutter.ndkVersion
@@ -17,14 +17,14 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "cc.pixelfox.pixelfox_mobile"
+        applicationId = "eu.fotoly.fotoly_mobile"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-        manifestPlaceholders["authScheme"] = "pixelfox"
+        manifestPlaceholders["authScheme"] = "fotoly"
     }
 
     flavorDimensions += "brand"

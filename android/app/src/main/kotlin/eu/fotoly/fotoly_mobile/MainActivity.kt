@@ -1,4 +1,4 @@
-package cc.pixelfox.pixelfox_mobile
+package eu.fotoly.fotoly_mobile
 
 import io.flutter.embedding.android.FlutterActivity
 

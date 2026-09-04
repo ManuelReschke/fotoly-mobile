@@ -3,8 +3,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
-import 'package:pixelfox_mobile/config/api_config.dart';
-import 'package:pixelfox_mobile/services/pixelfox_api_client.dart';
+import 'package:fotoly_mobile/config/api_config.dart';
+import 'package:fotoly_mobile/services/pixelfox_api_client.dart';
 
 import 'fake_api_http.dart';
 
