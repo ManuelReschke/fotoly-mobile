@@ -1,0 +1,30 @@
+{
+  "token": "pxls_testtoken",
+  "token_type": "Bearer",
+  "expires_at": "2026-11-27T12:00:00Z",
+  "user": {
+    "id": 42,
+    "username": "pixelpete",
+    "email": "pete@example.com",
+    "status": "active",
+    "plan": "premium",
+    "created_at": "2026-03-16T08:30:00Z",
+    "stats": {
+      "images": {
+        "count": 128,
+        "storage_used_bytes": 734003200,
+        "storage_remaining_bytes": 2415919104
+      },
+      "albums": {
+        "count": 7
+      }
+    },
+    "limits": {
+      "max_upload_bytes": 52428800,
+      "storage_quota_bytes": 3149926400,
+      "can_multi_upload": true,
+      "image_upload_enabled": true,
+      "direct_upload_enabled": true
+    }
+  }
+}

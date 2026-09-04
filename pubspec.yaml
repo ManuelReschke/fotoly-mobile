@@ -1,0 +1,56 @@
+name: pixelfox_mobile
+description: "Fotoly mobile backup app — secure photos to fotoly.eu"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  http: ^1.2.2
+  flutter_secure_storage: ^11.0.0
+  shared_preferences: ^2.3.3
+  provider: ^6.1.2
+  path: ^1.9.1
+  file_picker: ^12.0.0-beta.7
+  path_provider: ^2.1.5
+  permission_handler: ^13.0.0
+  crypto: ^3.0.7
+  cached_network_image: ^3.4.1
+  flutter_cache_manager: ^3.4.1
+  url_launcher: ^6.3.2
+  app_links: ^6.4.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+
+# Generate launcher icons: dart run flutter_launcher_icons
+# Source: assets/brand/fotoly-app-icon.png + Schiefer adaptive background.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  web:
+    generate: true
+    image_path: assets/brand/fotoly-app-icon.png
+    background_color: "#0F172A"
+    theme_color: "#0F172A"
+  image_path: assets/brand/fotoly-app-icon.png
+  adaptive_icon_background: "#0F172A"
+  adaptive_icon_foreground: assets/brand/fotoly-app-icon.png
+  remove_alpha_ios: true
+  background_color_ios: "#0F172A"
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/brand/pixelfox-logo.png
+    - assets/brand/pixelfox-logo-32.png
+    - assets/brand/fotoly-logo.png
+    - assets/brand/fotoly-logo-32.png
+    - assets/brand/fotoly-app-icon.png

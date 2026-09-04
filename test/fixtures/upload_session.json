@@ -1,0 +1,12 @@
+{
+  "upload_url": "https://pixelfox.cc/api/v1/upload",
+  "token": "test-session-token-abc123",
+  "pool_id": 2,
+  "expires_at": 1773655200,
+  "max_bytes": 52428800,
+  "processing": {
+    "profile": "original_only",
+    "keep_original": true,
+    "derivatives": []
+  }
+}

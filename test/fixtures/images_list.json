@@ -1,0 +1,26 @@
+{
+  "items": [
+    {
+      "image_uuid": "fd6b0a44-c4bb-4c95-8f48-31d5ec9cc4d8",
+      "title": "Sunset",
+      "file_name": "sunset.jpg",
+      "width": 4000,
+      "height": 3000,
+      "is_nsfw": false,
+      "stable_url": "https://pixelfox.cc/f/fd6b0a44-c4bb-4c95-8f48-31d5ec9cc4d8/original/original.jpg",
+      "created_at": "2026-08-20T10:00:00Z"
+    },
+    {
+      "image_uuid": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+      "title": "",
+      "file_name": "nophoto.jpg",
+      "width": 800,
+      "height": 600,
+      "is_nsfw": true,
+      "stable_url": "https://pixelfox.cc/f/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/original/original.jpg",
+      "created_at": "2026-08-19T10:00:00Z"
+    }
+  ],
+  "has_more": true,
+  "next_cursor": "cursor-page-2"
+}
