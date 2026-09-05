@@ -66,6 +66,9 @@ class AppBrand {
 
   String get appRedirectUri => '$callbackUrlScheme://auth/callback';
 
+  /// Login wordmark, e.g. `FOTOLY.EU` / `PIXELFOX.CC`.
+  String get wordmark => websiteHost.toUpperCase();
+
   String get apiKeyStorageKey => '${id}_api_key';
   String get accessTokenStorageKey => '${id}_access_token';
   String get selectedFoldersKey => '${id}_selected_folders';

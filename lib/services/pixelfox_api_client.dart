@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../config/api_config.dart';
+import '../config/app_brand.dart';
 import '../models/pixelfox_album.dart';
 import '../models/pixelfox_image.dart';
 import '../models/upload_result.dart';
@@ -271,7 +272,7 @@ class PixelfoxApiClient {
       throw PixelfoxApiException(
         accessToken != null && accessToken!.trim().isNotEmpty
             ? 'Session expired — please sign in again'
-            : 'Invalid API key — check the key in your Pixelfox settings',
+            : 'Invalid API key — check the key in your ${AppBrand.current.displayName} settings',
         statusCode: response.statusCode,
         body: response.body,
       );
@@ -296,7 +297,7 @@ class PixelfoxApiClient {
     final response = await _http.get(uri, headers: _authHeaders);
     if (response.statusCode == 401 || response.statusCode == 403) {
       throw PixelfoxApiException(
-        'Invalid API key — check the key in your Pixelfox settings',
+        'Invalid API key — check the key in your ${AppBrand.current.displayName} settings',
         statusCode: response.statusCode,
         body: response.body,
       );
@@ -331,7 +332,7 @@ class PixelfoxApiClient {
     final response = await _http.get(uri, headers: _authHeaders);
     if (response.statusCode == 401 || response.statusCode == 403) {
       throw PixelfoxApiException(
-        'Invalid API key — check the key in your Pixelfox settings',
+        'Invalid API key — check the key in your ${AppBrand.current.displayName} settings',
         statusCode: response.statusCode,
         body: response.body,
       );
@@ -464,7 +465,7 @@ class PixelfoxApiClient {
     if (response.statusCode == 404) return false;
     if (response.statusCode == 401 || response.statusCode == 403) {
       throw PixelfoxApiException(
-        'Invalid API key — check the key in your Pixelfox settings',
+        'Invalid API key — check the key in your ${AppBrand.current.displayName} settings',
         statusCode: response.statusCode,
         body: response.body,
       );

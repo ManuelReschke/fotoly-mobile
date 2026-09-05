@@ -48,6 +48,8 @@ void main() {
     expect(fotoly.logoAsset, 'assets/brand/fotoly-logo.png');
     expect(fotoly.logoMarkAsset, 'assets/brand/fotoly-logo-32.png');
     expect(fotoly.appIconAsset, 'assets/brand/fotoly-app-icon.png');
+    expect(fotoly.wordmark, 'FOTOLY.EU');
+    expect(AppBrand.pixelfox.wordmark, 'PIXELFOX.CC');
     expect(fotoly.apiKeyStorageKey, 'fotoly_api_key');
     expect(fotoly.backupLedgerKey, 'fotoly_backup_ledger_v1');
     expect(fotoly.localePrefsKey, 'fotoly_locale');
@@ -91,5 +93,13 @@ void main() {
     expect(en.alreadySafeOnPixelfox(3), contains('Fotoly'));
     expect(en.pixelfoxStorage, 'Fotoly storage');
     expect(en.imagesOnPixelfox, 'Images on Fotoly');
+    expect(en.foldersHelp, contains('Fotoly'));
+    expect(en.targetAlbumTitle, contains('Fotoly'));
+    expect(en.fullSyncSubtitle, contains('Fotoly'));
+    expect(de.foldersHelp, contains('Fotoly'));
+    expect(de.targetAlbumTitle, contains('Fotoly'));
+    expect(de.mediaPermissionPermanentlyDenied, contains('Fotoly'));
+    expect(de.foldersHelp, isNot(contains('Pixelfox')));
+    expect(en.foldersHelp, isNot(contains('Pixelfox')));
   });
 }

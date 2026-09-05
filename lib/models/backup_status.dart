@@ -1,3 +1,5 @@
+import '../config/app_brand.dart';
+
 /// High-level home-screen status derived from the backup job.
 enum BackupPhase {
   /// No backup run yet / waiting for user.
@@ -119,7 +121,7 @@ BackupStatus deriveBackupStatus({
         completed: completed,
         total: total,
         failed: 0,
-        message: 'All $completed photos are safe on Pixelfox',
+        message: 'All $completed photos are safe on ${AppBrand.current.displayName}',
       );
     }
     return BackupStatus(

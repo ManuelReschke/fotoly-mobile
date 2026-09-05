@@ -181,7 +181,8 @@ class AppStringsEn extends AppStrings {
   @override
   String everythingSecuredBody(int securedCount) =>
       '$securedCount photo${securedCount == 1 ? '' : 's'} in your folders '
-      'already live on Pixelfox.\nAdd new images and they will show up here.';
+      'already live on ${AppBrand.current.displayName}.\n'
+      'Add new images and they will show up here.';
 
   @override
   String get backingUpRightNow => 'Backing up right now';
@@ -191,7 +192,7 @@ class AppStringsEn extends AppStrings {
 
   @override
   String allPhotosSafeMessage(int completed) =>
-      'All $completed photos landed safely on Pixelfox.';
+      'All $completed photos landed safely on ${AppBrand.current.displayName}.';
 
   @override
   String get newPhotosShowAsPending =>
@@ -221,7 +222,7 @@ class AppStringsEn extends AppStrings {
 
   @override
   String get foldersHelp =>
-      'Only images in these folders are uploaded to Pixelfox.';
+      'Only images in these folders are uploaded to ${AppBrand.current.displayName}.';
 
   @override
   String get webFolderHint =>
@@ -255,7 +256,8 @@ class AppStringsEn extends AppStrings {
   String get addPath => 'Add path';
 
   @override
-  String get targetAlbumTitle => 'Target album on Pixelfox';
+  String get targetAlbumTitle =>
+      'Target album on ${AppBrand.current.displayName}';
 
   @override
   String get targetAlbumSubtitle =>
@@ -327,7 +329,7 @@ class AppStringsEn extends AppStrings {
 
   @override
   String get fullSyncSubtitle =>
-      'Checks that secured photos still exist on Pixelfox. '
+      'Checks that secured photos still exist on ${AppBrand.current.displayName}. '
       'Missing ones are cleared locally and re-uploaded on the next backup.';
 
   @override
@@ -338,8 +340,8 @@ class AppStringsEn extends AppStrings {
 
   @override
   String get fullSyncConfirm1Body =>
-      'Every locally secured photo that has a Pixelfox ID will be checked. '
-      'Images missing on Pixelfox are removed from the local “already uploaded” list '
+      'Every locally secured photo that has a ${AppBrand.current.displayName} ID will be checked. '
+      'Images missing on ${AppBrand.current.displayName} are removed from the local “already uploaded” list '
       'so the next backup can upload them again. '
       'No files are uploaded during this check.';
 
@@ -381,7 +383,7 @@ class AppStringsEn extends AppStrings {
 
   @override
   String get fullSyncNothingToCheck =>
-      'Nothing to check (no Pixelfox IDs in the ledger).';
+      'Nothing to check (no ${AppBrand.current.displayName} IDs in the ledger).';
 
   @override
   String appVersionLabel(String version) => 'Version $version';
@@ -392,7 +394,7 @@ class AppStringsEn extends AppStrings {
 
   @override
   String get mediaPermissionPermanentlyDenied =>
-      'Photo access is blocked. Open system settings and allow photos for Pixelfox.';
+      'Photo access is blocked. Open system settings and allow photos for ${AppBrand.current.displayName}.';
 
   @override
   String get openSystemSettings => 'Open settings';

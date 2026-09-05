@@ -37,6 +37,8 @@ void main() {
       ),
     );
 
+    expect(find.text('FOTOLY.EU'), findsOneWidget);
+    expect(find.text('PIXELFOX.CC'), findsNothing);
     expect(find.text('Email'), findsOneWidget);
     expect(find.text('Password'), findsOneWidget);
     expect(find.text('Sign in'), findsOneWidget);

@@ -169,7 +169,7 @@ class AuthService extends ChangeNotifier {
   Future<bool> loginWithApiKey(String rawKey) async {
     final key = rawKey.trim();
     if (key.isEmpty) {
-      _error = 'Please enter your Pixelfox API key';
+      _error = 'Please enter your ${AppBrand.current.displayName} API key';
       notifyListeners();
       return false;
     }

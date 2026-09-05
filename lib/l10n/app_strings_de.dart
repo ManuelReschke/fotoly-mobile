@@ -185,7 +185,8 @@ class AppStringsDe extends AppStrings {
   @override
   String everythingSecuredBody(int securedCount) =>
       '$securedCount Foto${securedCount == 1 ? '' : 's'} in deinen Ordnern '
-      'sind bereits auf Pixelfox.\nNeue Bilder erscheinen hier automatisch.';
+      'sind bereits auf ${AppBrand.current.displayName}.\n'
+      'Neue Bilder erscheinen hier automatisch.';
 
   @override
   String get backingUpRightNow => 'Sichert gerade';
@@ -195,7 +196,7 @@ class AppStringsDe extends AppStrings {
 
   @override
   String allPhotosSafeMessage(int completed) =>
-      'Alle $completed Fotos sind sicher auf Pixelfox gelandet.';
+      'Alle $completed Fotos sind sicher auf ${AppBrand.current.displayName} gelandet.';
 
   @override
   String get newPhotosShowAsPending =>
@@ -226,7 +227,7 @@ class AppStringsDe extends AppStrings {
 
   @override
   String get foldersHelp =>
-      'Nur Bilder aus diesen Ordnern werden zu Pixelfox hochgeladen.';
+      'Nur Bilder aus diesen Ordnern werden zu ${AppBrand.current.displayName} hochgeladen.';
 
   @override
   String get webFolderHint =>
@@ -260,7 +261,8 @@ class AppStringsDe extends AppStrings {
   String get addPath => 'Pfad hinzufügen';
 
   @override
-  String get targetAlbumTitle => 'Ziel-Album auf Pixelfox';
+  String get targetAlbumTitle =>
+      'Ziel-Album auf ${AppBrand.current.displayName}';
 
   @override
   String get targetAlbumSubtitle =>
@@ -333,7 +335,7 @@ class AppStringsDe extends AppStrings {
 
   @override
   String get fullSyncSubtitle =>
-      'Prüft, ob gesicherte Fotos noch auf Pixelfox liegen. '
+      'Prüft, ob gesicherte Fotos noch auf ${AppBrand.current.displayName} liegen. '
       'Fehlende Einträge werden lokal freigegeben und beim nächsten Backup neu hochgeladen.';
 
   @override
@@ -344,8 +346,8 @@ class AppStringsDe extends AppStrings {
 
   @override
   String get fullSyncConfirm1Body =>
-      'Jedes lokal als gesichert markierte Foto mit Pixelfox-ID wird geprüft. '
-      'Bilder, die auf Pixelfox fehlen, werden aus der lokalen „bereits hochgeladen“-Liste entfernt, '
+      'Jedes lokal als gesichert markierte Foto mit ${AppBrand.current.displayName}-ID wird geprüft. '
+      'Bilder, die auf ${AppBrand.current.displayName} fehlen, werden aus der lokalen „bereits hochgeladen“-Liste entfernt, '
       'damit sie beim nächsten Backup erneut hochgeladen werden können. '
       'Während des Checks werden keine Dateien hochgeladen.';
 
@@ -387,7 +389,7 @@ class AppStringsDe extends AppStrings {
 
   @override
   String get fullSyncNothingToCheck =>
-      'Keine prüfbaren Einträge (keine Pixelfox-IDs im Ledger).';
+      'Keine prüfbaren Einträge (keine ${AppBrand.current.displayName}-IDs im Ledger).';
 
   @override
   String appVersionLabel(String version) => 'Version $version';
@@ -398,7 +400,7 @@ class AppStringsDe extends AppStrings {
 
   @override
   String get mediaPermissionPermanentlyDenied =>
-      'Foto-Zugriff ist blockiert. Öffne die Systemeinstellungen und erlaube Fotos für Pixelfox.';
+      'Foto-Zugriff ist blockiert. Öffne die Systemeinstellungen und erlaube Fotos für ${AppBrand.current.displayName}.';
 
   @override
   String get openSystemSettings => 'Einstellungen öffnen';

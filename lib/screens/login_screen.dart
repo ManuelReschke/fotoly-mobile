@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../config/app_brand.dart';
 import '../l10n/l10n_scope.dart';
 import '../services/auth_service.dart';
 import '../services/pixelfox_api_client.dart';
@@ -83,7 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const Center(child: PixelfoxLogo(size: 88)),
                   const SizedBox(height: 16),
                   Text(
-                    'PIXELFOX.CC',
+                    AppBrand.current.wordmark,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.w800,

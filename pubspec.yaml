@@ -31,7 +31,8 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.4
 
 # Generate launcher icons: dart run flutter_launcher_icons
-# Source: assets/brand/fotoly-app-icon.png + Schiefer adaptive background.
+# Master: assets/brand/source-app-icon.png
+# Square 1024 export: assets/brand/fotoly-app-icon.png + Schiefer adaptive background.
 flutter_launcher_icons:
   android: true
   ios: true
@@ -54,3 +55,4 @@ flutter:
     - assets/brand/fotoly-logo.png
     - assets/brand/fotoly-logo-32.png
     - assets/brand/fotoly-app-icon.png
+    - assets/brand/source-app-icon.png
