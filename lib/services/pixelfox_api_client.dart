@@ -176,6 +176,48 @@ class PixelfoxApiClient {
     );
   }
 
+  Future<String> register({
+    required String username,
+    required String email,
+    required String password,
+  }) async {
+    final uri = Uri.parse(ApiConfig.authRegisterUrl());
+    final body = {
+      'username': username,
+      'email': email,
+      'password': password,
+    };
+    final headers = {..._jsonHeaders, 'Content-Type': 'application/json'};
+    _log(
+      ApiRequestLog(
+        method: 'POST',
+        url: uri.toString(),
+        headers: headers,
+        jsonBody: body,
+      ),
+    );
+    final response = await _http.post(
+      uri,
+      headers: headers,
+      body: jsonEncode(body),
+    );
+    if (response.statusCode != 201) {
+      throw PixelfoxApiException(
+        _apiErrorMessage(response.body, 'Registration failed'),
+        statusCode: response.statusCode,
+        body: response.body,
+      );
+    }
+    try {
+      final json = jsonDecode(response.body);
+      if (json is Map<String, dynamic>) {
+        final returned = (json['email'] as String?)?.trim() ?? '';
+        if (returned.isNotEmpty) return returned;
+      }
+    } catch (_) {}
+    return email;
+  }
+
   Future<AuthSession> exchangeAuthCode(String code) async {
     return _postAuthSession(Uri.parse('$_apiRoot/auth/token'), {
       'code': code,

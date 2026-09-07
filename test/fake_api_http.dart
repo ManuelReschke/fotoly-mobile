@@ -22,6 +22,8 @@ class FakeApiHttp implements ApiHttp {
     this.defaultImageBody,
     this.providersStatus = 200,
     this.providersBody,
+    this.registerStatus = 201,
+    this.registerBody,
     this.loginStatus = 200,
     this.loginBody,
     this.tokenStatus = 200,
@@ -48,6 +50,8 @@ class FakeApiHttp implements ApiHttp {
   String? defaultImageBody;
   int providersStatus;
   String? providersBody;
+  int registerStatus;
+  String? registerBody;
   int loginStatus;
   String? loginBody;
   int tokenStatus;
@@ -123,6 +127,13 @@ class FakeApiHttp implements ApiHttp {
       return http.Response(
         sessionBody ?? '{}',
         sessionStatus,
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    if (url.path.endsWith('/auth/register')) {
+      return http.Response(
+        registerBody ?? '{}',
+        registerStatus,
         headers: {'content-type': 'application/json'},
       );
     }

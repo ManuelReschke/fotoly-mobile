@@ -95,6 +95,53 @@ void main() {
     });
   });
 
+  group('PixelfoxApiClient auth register', () {
+    test('register posts credentials and returns email from 201', () async {
+      final fake = FakeApiHttp(
+        registerStatus: 201,
+        registerBody:
+            '{"email":"pete@example.com","message":"Registration successful. Please check your inbox for the activation link."}',
+      );
+      final client = PixelfoxApiClient(httpClient: fake);
+
+      final email = await client.register(
+        username: 'pete',
+        email: 'pete@example.com',
+        password: 'secret12',
+      );
+
+      expect(email, 'pete@example.com');
+      final req = fake.sent.whereType<http.BaseRequest>().firstWhere(
+        (r) => r.url.path.contains('/auth/register'),
+      );
+      expect(req.method, 'POST');
+    });
+
+    test('register throws PixelfoxApiException on 409', () async {
+      final fake = FakeApiHttp(
+        registerStatus: 409,
+        registerBody:
+            '{"error":"conflict","message":"Email is already registered"}',
+      );
+      final client = PixelfoxApiClient(httpClient: fake);
+
+      expect(
+        () => client.register(
+          username: 'pete',
+          email: 'pete@example.com',
+          password: 'secret12',
+        ),
+        throwsA(
+          isA<PixelfoxApiException>().having(
+            (e) => e.message,
+            'message',
+            'Email is already registered',
+          ),
+        ),
+      );
+    });
+  });
+
   group('PixelfoxApiClient upload flow', () {
     test(
       'createUploadSession posts file_size + original_only processing',

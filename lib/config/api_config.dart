@@ -30,6 +30,7 @@ class ApiConfig {
 
   static String authProvidersUrl() => '$apiRoot/auth/providers';
   static String authLoginUrl() => '$apiRoot/auth/login';
+  static String authRegisterUrl() => '$apiRoot/auth/register';
   static String authTokenUrl() => '$apiRoot/auth/token';
   static String authLogoutUrl() => '$apiRoot/auth/logout';
   static String authProviderStartUrl(String provider) =>
