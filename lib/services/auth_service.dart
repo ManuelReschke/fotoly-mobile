@@ -128,6 +128,40 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  Future<bool> register({
+    required String username,
+    required String email,
+    required String password,
+  }) async {
+    final trimmedName = username.trim();
+    final trimmedEmail = email.trim();
+    if (trimmedName.isEmpty || trimmedEmail.isEmpty || password.isEmpty) {
+      _error = 'Please enter username, email and password';
+      notifyListeners();
+      return false;
+    }
+    _loading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await _guestClient.register(
+        username: trimmedName,
+        email: trimmedEmail,
+        password: password,
+      );
+      return true;
+    } on PixelfoxApiException catch (e) {
+      _error = e.message;
+      return false;
+    } catch (e) {
+      _error = 'Registration failed: $e';
+      return false;
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
+  }
+
   Future<bool> loginWithProvider(String providerId) async {
     final opener = _openAuthSession;
     if (opener == null) {

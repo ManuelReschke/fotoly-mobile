@@ -128,4 +128,48 @@ void main() {
     expect(auth.accessToken, 'pxls_testtoken');
     expect(auth.profile?.username, 'pixelpete');
   });
+
+  test('register succeeds without persisting a session', () async {
+    final store = MemorySecureStore();
+    final fake = FakeApiHttp(
+      registerStatus: 201,
+      registerBody:
+          '{"email":"pete@example.com","message":"Registration successful. Please check your inbox for the activation link."}',
+    );
+    final auth = AuthService(secureStore: store, clientFactory: factoryFor(fake));
+
+    final ok = await auth.register(
+      username: 'pete',
+      email: 'pete@example.com',
+      password: 'secret12',
+    );
+
+    expect(ok, isTrue);
+    expect(auth.isAuthenticated, isFalse);
+    expect(auth.accessToken, isNull);
+    expect(auth.apiKey, isNull);
+    expect(await store.read(kAccessTokenStorageKey), isNull);
+    expect(auth.error, isNull);
+  });
+
+  test('register sets error on 409 and does not persist', () async {
+    final store = MemorySecureStore();
+    final fake = FakeApiHttp(
+      registerStatus: 409,
+      registerBody:
+          '{"error":"conflict","message":"Email is already registered"}',
+    );
+    final auth = AuthService(secureStore: store, clientFactory: factoryFor(fake));
+
+    final ok = await auth.register(
+      username: 'pete',
+      email: 'pete@example.com',
+      password: 'secret12',
+    );
+
+    expect(ok, isFalse);
+    expect(auth.error, 'Email is already registered');
+    expect(auth.isAuthenticated, isFalse);
+    expect(await store.read(kAccessTokenStorageKey), isNull);
+  });
 }
