@@ -72,4 +72,25 @@ void main() {
     expect(find.textContaining('pete@example.com'), findsWidgets);
     expect(find.text('Create account'), findsNothing);
   });
+
+  testWidgets('409 shows error inline and snackbar', (tester) async {
+    final fake = FakeApiHttp(
+      registerStatus: 409,
+      registerBody:
+          '{"error":"conflict","message":"Email is already registered"}',
+    );
+    await pumpRegister(tester, authWith(fake));
+
+    await tester.enterText(find.byType(TextField).at(0), 'pete');
+    await tester.enterText(find.byType(TextField).at(1), 'pete@example.com');
+    await tester.enterText(find.byType(TextField).at(2), 'secret12');
+    await tester.enterText(find.byType(TextField).at(3), 'secret12');
+    await tester.tap(find.widgetWithText(FilledButton, 'Create account'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Email is already registered'), findsWidgets);
+    expect(find.byType(SnackBar), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Create account'), findsOneWidget);
+    expect(find.text('Check your email'), findsNothing);
+  });
 }

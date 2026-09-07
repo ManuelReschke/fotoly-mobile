@@ -153,6 +153,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     textInputAction: TextInputAction.done,
                     onSubmitted: (_) => _submit(),
                   ),
+                  if (auth.error != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      auth.error!,
+                      style: TextStyle(color: scheme.error),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                   const SizedBox(height: 20),
                   FilledButton(
                     onPressed: auth.loading ? null : _submit,
