@@ -6,6 +6,7 @@ import '../l10n/l10n_scope.dart';
 import '../services/auth_service.dart';
 import '../services/pixelfox_api_client.dart';
 import '../widgets/pixelfox_logo.dart';
+import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -156,6 +157,19 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           )
                         : Text(s.signIn),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: auth.loading
+                        ? null
+                        : () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const RegisterScreen(),
+                              ),
+                            );
+                          },
+                    child: Text(s.registerLink),
                   ),
                   if (auth.providers.isNotEmpty) ...[
                     const SizedBox(height: 20),

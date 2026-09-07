@@ -42,12 +42,44 @@ void main() {
     expect(find.text('Email'), findsOneWidget);
     expect(find.text('Password'), findsOneWidget);
     expect(find.text('Sign in'), findsOneWidget);
+    expect(find.text('No account yet? Register'), findsOneWidget);
     expect(find.text('Sign in with Google'), findsOneWidget);
     expect(find.text('Sign in with API key'), findsOneWidget);
     expect(find.text('API key'), findsNothing);
 
-    await tester.tap(find.text('Sign in with API key'));
+    final advancedApiKey = find.text('Sign in with API key');
+    await tester.ensureVisible(advancedApiKey);
+    await tester.pumpAndSettle();
+    await tester.tap(advancedApiKey);
     await tester.pump();
     expect(find.text('API key'), findsOneWidget);
+  });
+
+  testWidgets('register link opens register screen', (tester) async {
+    final locale = LocaleController(prefs: MemoryPrefsStore());
+    await locale.setLocale(AppLocale.en);
+    final auth = AuthService(
+      secureStore: MemorySecureStore(),
+      clientFactory: ({apiKey, accessToken}) => PixelfoxApiClient(
+        apiKey: apiKey,
+        accessToken: accessToken,
+        httpClient: FakeApiHttp(),
+      ),
+    );
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<LocaleController>.value(value: locale),
+          ChangeNotifierProvider<AuthService>.value(value: auth),
+        ],
+        child: const MaterialApp(home: LoginScreen()),
+      ),
+    );
+
+    await tester.tap(find.text('No account yet? Register'));
+    await tester.pumpAndSettle();
+    expect(find.text('Create account'), findsWidgets);
+    expect(find.text('Username'), findsOneWidget);
   });
 }
