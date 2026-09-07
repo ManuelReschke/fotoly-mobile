@@ -97,6 +97,38 @@ class AppStringsDe extends AppStrings {
       'Social Login öffnet den Browser. Den API-Schlüssel brauchst du nur noch für Skripte.';
 
   @override
+  String get registerLink => 'Noch kein Konto? Registrieren';
+
+  @override
+  String get registerTitle => 'Konto erstellen';
+
+  @override
+  String get registerSubtitle =>
+      'Nach der Registrierung schicken wir einen Aktivierungslink per E-Mail.';
+
+  @override
+  String get usernameLabel => 'Benutzername';
+
+  @override
+  String get passwordConfirmLabel => 'Passwort wiederholen';
+
+  @override
+  String get createAccount => 'Konto erstellen';
+
+  @override
+  String get passwordMismatch => 'Die Passwörter stimmen nicht überein.';
+
+  @override
+  String get checkEmailTitle => 'E-Mail prüfen';
+
+  @override
+  String checkEmailBody(String email) =>
+      'Wir haben einen Aktivierungslink an $email geschickt. Öffne den Link im Browser und logge dich danach hier ein.';
+
+  @override
+  String get backToLogin => 'Zum Login';
+
+  @override
   String hiUser(String username) => 'Hallo, $username';
 
   @override

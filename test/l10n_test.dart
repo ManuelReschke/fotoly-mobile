@@ -104,4 +104,21 @@ void main() {
     expect(de.galleryLoadError, contains('nicht geladen'));
     expect(en.galleryImageLoadError, 'Image unavailable');
   });
+
+  test('register and check-email copy exists in DE and EN', () {
+    const de = AppStringsDe();
+    const en = AppStringsEn();
+    expect(de.registerLink, 'Noch kein Konto? Registrieren');
+    expect(en.registerLink, 'No account yet? Register');
+    expect(de.createAccount, 'Konto erstellen');
+    expect(en.createAccount, 'Create account');
+    expect(de.passwordMismatch, 'Die Passwörter stimmen nicht überein.');
+    expect(en.passwordMismatch, 'Passwords do not match.');
+    expect(de.checkEmailTitle, 'E-Mail prüfen');
+    expect(en.checkEmailTitle, 'Check your email');
+    expect(de.checkEmailBody('a@b.c'), contains('a@b.c'));
+    expect(en.checkEmailBody('a@b.c'), contains('a@b.c'));
+    expect(de.backToLogin, 'Zum Login');
+    expect(en.backToLogin, 'Back to login');
+  });
 }

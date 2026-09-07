@@ -96,6 +96,38 @@ class AppStringsEn extends AppStrings {
       'Social login opens the browser. The API key is only needed for scripts.';
 
   @override
+  String get registerLink => 'No account yet? Register';
+
+  @override
+  String get registerTitle => 'Create account';
+
+  @override
+  String get registerSubtitle =>
+      'After you register we send an activation link by email.';
+
+  @override
+  String get usernameLabel => 'Username';
+
+  @override
+  String get passwordConfirmLabel => 'Confirm password';
+
+  @override
+  String get createAccount => 'Create account';
+
+  @override
+  String get passwordMismatch => 'Passwords do not match.';
+
+  @override
+  String get checkEmailTitle => 'Check your email';
+
+  @override
+  String checkEmailBody(String email) =>
+      'We sent an activation link to $email. Open the link in your browser, then sign in here.';
+
+  @override
+  String get backToLogin => 'Back to login';
+
+  @override
   String hiUser(String username) => 'Hi, $username';
 
   @override

@@ -40,6 +40,16 @@ abstract class AppStrings {
   String get apiKeyHint;
   String get connectToPixelfox;
   String get loginFooterNote;
+  String get registerLink;
+  String get registerTitle;
+  String get registerSubtitle;
+  String get usernameLabel;
+  String get passwordConfirmLabel;
+  String get createAccount;
+  String get passwordMismatch;
+  String get checkEmailTitle;
+  String checkEmailBody(String email);
+  String get backToLogin;
 
   // —— Home ——
   String hiUser(String username);
