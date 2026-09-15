@@ -28,7 +28,7 @@ FLAVOR_FLAG := --flavor $(FLAVOR)
 
 .PHONY: help get deps analyze test test-coverage check format fix \
 	run run-chrome run-linux clean doctor devices build-apk build-apk-debug \
-	build-web upgrade outdated
+	build-aab build-web upgrade outdated
 
 help: ## Show this help
 	@echo "Fotoly Mobile — available targets:"
@@ -43,6 +43,7 @@ help: ## Show this help
 	@echo "  make build-apk-debug             # Fotoly phone APK"
 	@echo "  make build-apk-debug FLAVOR=pixelfox"
 	@echo "  make build-apk                   # release APK"
+	@echo "  make build-aab                   # Play Store App Bundle"
 	@echo "  make test"
 
 get deps: ## Install package dependencies (flutter pub get)
@@ -101,6 +102,12 @@ build-apk: ## Build Android release APK for FLAVOR (default fotoly)
 	@echo
 	@echo "APK: build/app/outputs/flutter-apk/app-$(FLAVOR)-release.apk"
 	@ls -lh build/app/outputs/flutter-apk/app-$(FLAVOR)-release.apk 2>/dev/null || true
+
+build-aab: ## Build Android App Bundle for FLAVOR (default fotoly)
+	$(FLUTTER) build appbundle $(FLAVOR_FLAG) --release --dart-define=FLAVOR=$(FLAVOR)
+	@echo
+	@echo "AAB: build/app/outputs/bundle/$(FLAVOR)Release/app-$(FLAVOR)-release.aab"
+	@ls -lh build/app/outputs/bundle/$(FLAVOR)Release/app-$(FLAVOR)-release.aab 2>/dev/null || true
 
 build-apk-debug: ## Build debug APK for phone testing (FLAVOR=pixelfox|fotoly)
 	$(FLUTTER) build apk $(FLAVOR_FLAG) --debug --dart-define=FLAVOR=$(FLAVOR)

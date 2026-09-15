@@ -75,6 +75,26 @@ Pure logic is unit-tested with a fake HTTP layer (no real API key required).
 make check
 ```
 
+## Releases
+
+Push a semver tag. GitHub Actions runs `make check`, builds the Fotoly release APK and Play App Bundle, and publishes a GitHub Release (notes from commits since the previous tag). Tags with a hyphen (`v1.2.3-rc.1`) are marked as pre-release.
+
+```bash
+git tag v1.2.3
+git push origin v1.2.3
+```
+
+Assets: `fotoly-1.2.3.apk` (sideload), `fotoly-1.2.3.aab` (Play Console), plus `SHA256SUMS`.
+
+Without signing secrets the APK/AAB is **debug-signed** (fine for sideloading, not for Play). For a Play-ready signature, add these repository secrets and a keystore (see `android/key.properties.example`):
+
+| Secret | Value |
+|--------|--------|
+| `ANDROID_KEYSTORE_BASE64` | `base64 -w0 upload-keystore.jks` |
+| `ANDROID_KEYSTORE_PASSWORD` | keystore password |
+| `ANDROID_KEY_ALIAS` | key alias (often `upload`) |
+| `ANDROID_KEY_PASSWORD` | key password (defaults to the keystore password if omitted) |
+
 ## API reference
 
 See https://fotoly.eu/docs/api — base URL `https://fotoly.eu/api/v1`.

@@ -72,8 +72,12 @@ make run          # DEVICE=chrome|linux|<id> optional; default FLAVOR=fotoly
 make run-linux    # desktop: folder picker + backup work
 make run-chrome   # UI/auth only — no real folder pick/backup
 make build-apk-debug  # Fotoly APK (FLAVOR=pixelfox for PixelFox)
+make build-apk        # release APK
+make build-aab        # Play Store App Bundle
 make doctor
 ```
+
+Releases: push a `vX.Y.Z` tag. `.github/workflows/release.yml` runs `make check`, builds Fotoly APK + AAB, and publishes a GitHub Release. Optional Play signing via `ANDROID_KEYSTORE_*` repository secrets.
 
 Before claiming work done: run `make check` (or at least `make analyze` + `make test` for the touched area).
 
@@ -117,6 +121,7 @@ Before claiming work done: run `make check` (or at least `make analyze` + `make 
 |------|---------|
 | `README.md` | Features, setup, user-facing architecture |
 | `Makefile` | Canonical agent/dev commands |
+| `.github/workflows/release.yml` | Tag `vX.Y.Z` → GitHub Release + APK/AAB |
 | `lib/config/api_config.dart` | Base URL and endpoint paths |
 | This file | Agent workflow, discovery order, constraints |
 

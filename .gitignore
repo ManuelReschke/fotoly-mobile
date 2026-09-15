@@ -47,6 +47,12 @@ app.*.map.json
 # Built Android packages
 *.apk
 *.aab
+/dist/
+
+# Android release signing (never commit)
+android/key.properties
+*.jks
+*.keystore
 
 # Local git worktrees
 .worktrees/

@@ -1,0 +1,117 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.9"
+          channel: stable
+          cache: true
+      - name: Test
+        run: make check
+      - name: Check release scripts
+        run: |
+          bash -n scripts/set-release-version.sh scripts/package-android.sh
+          bash scripts/set-release-version.sh v0.0.0 1
+          grep -q '^version: 0.0.0+1$' pubspec.yaml
+          grep -q "static const String version = '0.0.0';" lib/config/app_info.dart
+          grep -q "static const String buildNumber = '1';" lib/config/app_info.dart
+          git checkout -- pubspec.yaml lib/config/app_info.dart
+          bash scripts/set-release-version.sh v1.2.3-rc.1 42
+          grep -q '^version: 1.2.3-rc.1+42$' pubspec.yaml
+          git checkout -- pubspec.yaml lib/config/app_info.dart
+          if bash scripts/set-release-version.sh not-a-version; then
+            echo "expected invalid tag to fail" >&2
+            exit 1
+          fi
+
+  build-android:
+    needs: test
+    runs-on: ubuntu-24.04
+    env:
+      FLAVOR: fotoly
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.9"
+          channel: stable
+          cache: true
+      - name: Set version
+        run: bash scripts/set-release-version.sh "${{ github.ref_name }}"
+      - name: Configure Android signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [[ -n "${ANDROID_KEYSTORE_BASE64:-}" && -n "${ANDROID_KEYSTORE_PASSWORD:-}" && -n "${ANDROID_KEY_ALIAS:-}" ]]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/upload-keystore.jks
+            key_password="${ANDROID_KEY_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}"
+            {
+              printf 'storePassword=%s\n' "$ANDROID_KEYSTORE_PASSWORD"
+              printf 'keyPassword=%s\n' "$key_password"
+              printf 'keyAlias=%s\n' "$ANDROID_KEY_ALIAS"
+              printf 'storeFile=%s\n' '../upload-keystore.jks'
+            } > android/key.properties
+            echo "Release signing enabled."
+          else
+            echo "No ANDROID_KEYSTORE_* secrets; APK/AAB will be debug-signed."
+          fi
+      - name: Accept Android licenses
+        run: yes | flutter doctor --android-licenses > /dev/null 2>&1 || true
+      - name: Build APK and App Bundle
+        run: |
+          make get
+          make build-apk
+          make build-aab
+      - name: Package
+        run: bash scripts/package-android.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    needs: build-android
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Checksums
+        working-directory: dist
+        run: sha256sum *.apk *.aab > SHA256SUMS
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: Fotoly ${{ github.ref_name }}
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          fail_on_unmatched_files: true
+          files: dist/*
