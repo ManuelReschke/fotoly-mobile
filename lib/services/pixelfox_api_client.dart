@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../config/api_config.dart';
 import '../config/app_brand.dart';
+import '../models/album_sharing.dart';
 import '../models/pixelfox_album.dart';
 import '../models/pixelfox_image.dart';
 import '../models/upload_result.dart';
@@ -21,6 +22,18 @@ class PixelfoxApiException implements Exception {
   @override
   String toString() =>
       'PixelfoxApiException($statusCode): $message${body != null ? ' — $body' : ''}';
+}
+
+/// Username matched more than one active account. Invite again with [candidates].
+class AlbumMemberAmbiguousException extends PixelfoxApiException {
+  AlbumMemberAmbiguousException({
+    required this.candidates,
+    required String message,
+    super.statusCode,
+    super.body,
+  }) : super(message);
+
+  final List<AlbumMemberCandidate> candidates;
 }
 
 /// Low-level request recorder for tests (captures session body + upload auth).
@@ -615,6 +628,148 @@ class PixelfoxApiClient {
       {'image_uuid': imageUuid},
     );
     return _readAlbum(response, 'Could not update album cover');
+  }
+
+  /// Active members of an album owned by the caller.
+  Future<List<AlbumMember>> listAlbumMembers(int albumId) async {
+    final json = await _getJson(
+      Uri.parse('$_apiRoot/albums/$albumId/members'),
+      'Could not load album members',
+    );
+    return _memberList(json['members']);
+  }
+
+  /// Invites by [username] or, after an ambiguous match, by [userId].
+  /// Exactly one of the two must be set.
+  Future<AlbumMemberInvite> inviteAlbumMember(
+    int albumId, {
+    int? userId,
+    String? username,
+  }) async {
+    if ((userId == null) == (username == null)) {
+      throw ArgumentError('provide exactly one of userId or username');
+    }
+    final response = await _sendJson(
+      'POST',
+      Uri.parse('$_apiRoot/albums/$albumId/members'),
+      userId != null ? {'user_id': userId} : {'username': username},
+    );
+    if (response.statusCode == 409) {
+      final candidates = albumMemberCandidatesFromBody(response.body);
+      if (candidates.isNotEmpty) {
+        throw AlbumMemberAmbiguousException(
+          candidates: candidates,
+          message:
+              _serverMessage(response.body) ??
+              'username matches more than one active user',
+          statusCode: response.statusCode,
+          body: response.body,
+        );
+      }
+    }
+    _ensureSuccess(response, 'Could not invite album member');
+    return AlbumMemberInvite.fromJson(
+      _readMap(response, 'Could not invite album member'),
+    );
+  }
+
+  /// Removes one member grant. The album itself stays.
+  Future<void> removeAlbumMember(int albumId, int userId) async {
+    final response = await _sendJson(
+      'DELETE',
+      Uri.parse('$_apiRoot/albums/$albumId/members/$userId'),
+    );
+    _ensureSuccess(response, 'Could not remove album member');
+  }
+
+  /// Private categories of the caller plus public categories.
+  Future<List<AlbumCategory>> listAlbumCategories() async {
+    final json = await _getJson(
+      Uri.parse('$_apiRoot/album-categories'),
+      'Could not load album categories',
+    );
+    return _categoryList(json['categories']);
+  }
+
+  /// Creates a private category. The API rejects public categories.
+  Future<AlbumCategory> createAlbumCategory(String name) async {
+    final response = await _sendJson(
+      'POST',
+      Uri.parse('$_apiRoot/album-categories'),
+      {'name': name},
+    );
+    _ensureSuccess(response, 'Could not create album category');
+    final category = AlbumCategory.tryFromJson(
+      _readMap(response, 'Could not create album category'),
+    );
+    if (category == null) {
+      throw PixelfoxApiException(
+        'Could not create album category',
+        statusCode: response.statusCode,
+        body: response.body,
+      );
+    }
+    return category;
+  }
+
+  /// Replaces the full category set. Both lists are required and may be empty.
+  Future<List<AlbumCategory>> setAlbumCategories(
+    int albumId, {
+    required List<int> privateCategoryIds,
+    required List<int> publicCategoryIds,
+  }) async {
+    final response = await _sendJson(
+      'PUT',
+      Uri.parse('$_apiRoot/albums/$albumId/categories'),
+      {
+        'private_category_ids': privateCategoryIds,
+        'public_category_ids': publicCategoryIds,
+      },
+    );
+    _ensureSuccess(response, 'Could not update album categories');
+    final json = _readMap(response, 'Could not update album categories');
+    return _categoryList(json['categories']);
+  }
+
+  Future<Map<String, dynamic>> _getJson(Uri uri, String fallback) async {
+    _log(
+      ApiRequestLog(method: 'GET', url: uri.toString(), headers: _authHeaders),
+    );
+    final response = await _http.get(uri, headers: _authHeaders);
+    _ensureSuccess(response, fallback);
+    return _readMap(response, fallback);
+  }
+
+  Map<String, dynamic> _readMap(http.Response response, String fallback) {
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map) {
+      throw PixelfoxApiException(
+        fallback,
+        statusCode: response.statusCode,
+        body: response.body,
+      );
+    }
+    return Map<String, dynamic>.from(decoded);
+  }
+
+  List<AlbumMember> _memberList(Object? raw) {
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map((entry) => AlbumMember.fromJson(Map<String, dynamic>.from(entry)))
+        .toList();
+  }
+
+  List<AlbumCategory> _categoryList(Object? raw) {
+    if (raw is! List) return const [];
+    return raw
+        .whereType<Map>()
+        .map(
+          (entry) =>
+              AlbumCategory.tryFromJson(Map<String, dynamic>.from(entry)),
+        )
+        .whereType<AlbumCategory>()
+        .toList();
   }
 
   Future<http.Response> _sendJson(

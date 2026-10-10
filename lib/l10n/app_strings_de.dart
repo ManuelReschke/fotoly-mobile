@@ -259,6 +259,165 @@ class AppStringsDe extends AppStrings {
   String get albumActionsTooltip => 'Album-Aktionen';
 
   @override
+  String get albumMembers => 'Mitglieder';
+
+  @override
+  String get albumCategories => 'Kategorien';
+
+  @override
+  String get albumMembersEmpty => 'Noch keine Mitglieder.';
+
+  @override
+  String get albumMembersHelp =>
+      'Eingeladene Personen können dieses Album ansehen.';
+
+  @override
+  String get albumInviteLabel => 'Benutzername';
+
+  @override
+  String get albumInviteAction => 'Einladen';
+
+  @override
+  String get albumInviteSent => 'Einladung gesendet';
+
+  @override
+  String get albumAlreadyMember => 'Diese Person ist schon Mitglied.';
+
+  @override
+  String get albumMemberRemoved => 'Mitglied entfernt';
+
+  @override
+  String get albumRemoveMember => 'Entfernen';
+
+  @override
+  String get albumRemoveMemberTitle => 'Mitglied entfernen?';
+
+  @override
+  String get albumRemoveMemberBody =>
+      'Die Person verliert den Zugriff auf dieses Album.';
+
+  @override
+  String get albumMemberRoleViewer => 'Kann ansehen';
+
+  @override
+  String get albumMemberOriginInvite => 'Eingeladen';
+
+  @override
+  String get albumMemberOriginLinkSave => 'Über Link gespeichert';
+
+  @override
+  String get albumMemberUserNotFound => 'Kein aktives Konto mit diesem Namen.';
+
+  @override
+  String get albumMemberNotFound => 'Mitglied nicht gefunden.';
+
+  @override
+  String get albumCannotInviteOwner =>
+      'Du kannst dich selbst oder den Besitzer nicht einladen.';
+
+  @override
+  String get albumMemberLimit =>
+      'Dieses Album hat die maximale Anzahl an Mitgliedern erreicht.';
+
+  @override
+  String get albumUsernameRequired => 'Bitte einen Benutzernamen eingeben.';
+
+  @override
+  String get albumUsernameTooLong => 'Der Benutzername ist zu lang.';
+
+  @override
+  String get albumMemberAmbiguous =>
+      'Mehrere Konten heißen so. Wähle eines aus.';
+
+  @override
+  String get albumMemberInviteError => 'Einladung fehlgeschlagen.';
+
+  @override
+  String get albumMemberLoadError => 'Mitglieder konnten nicht geladen werden.';
+
+  @override
+  String get albumMemberRemoveError => 'Mitglied konnte nicht entfernt werden.';
+
+  @override
+  String get albumCategoriesUnknownHelp =>
+      'Speichern ersetzt alle Kategorien dieses Albums. Fotoly liefert die bisherigen Zuordnungen nicht mit, deshalb startet die Auswahl leer.';
+
+  @override
+  String get albumCategoriesKnownHelp =>
+      'Speichern ersetzt alle Kategorien dieses Albums.';
+
+  @override
+  String get albumCategoriesEmpty => 'Noch keine Kategorien.';
+
+  @override
+  String get albumCategoryPrivate => 'Privat';
+
+  @override
+  String get albumCategoryPublic => 'Öffentlich';
+
+  @override
+  String get albumCategoryPublicNeedsAlbum =>
+      'Öffentliche Kategorien nur bei einem öffentlichen Album.';
+
+  @override
+  String get albumCategoryNameLabel => 'Neue private Kategorie';
+
+  @override
+  String get albumCategoryCreate => 'Anlegen';
+
+  @override
+  String get albumCategoryCreated => 'Kategorie angelegt';
+
+  @override
+  String get albumCategoryNameInvalid =>
+      'Nur Buchstaben, Zahlen und Bindestriche.';
+
+  @override
+  String get albumCategoryNameRequired => 'Bitte einen Namen eingeben.';
+
+  @override
+  String get albumCategoryNameTooLong => 'Der Name ist zu lang.';
+
+  @override
+  String get albumCategoryExists =>
+      'Eine private Kategorie mit diesem Namen gibt es schon.';
+
+  @override
+  String get albumCategorySave => 'Speichern';
+
+  @override
+  String get albumCategorySaved => 'Kategorien gespeichert';
+
+  @override
+  String get albumCategoryClear => 'Alle entfernen';
+
+  @override
+  String get albumCategoryReplaceTitle => 'Kategorien ersetzen?';
+
+  @override
+  String get albumCategoryReplaceBody =>
+      'Die Auswahl ersetzt alle bisherigen Kategorien dieses Albums.';
+
+  @override
+  String get albumCategorySaveError =>
+      'Kategorien konnten nicht gespeichert werden.';
+
+  @override
+  String get albumCategoryLoadError =>
+      'Kategorien konnten nicht geladen werden.';
+
+  @override
+  String get albumCategoryCreateError =>
+      'Kategorie konnte nicht angelegt werden.';
+
+  @override
+  String get albumCategoryTooMany => 'Höchstens 100 Kategorien.';
+
+  @override
+  String albumCategoryCount(int count) =>
+      count == 1 ? '1 Album' : '$count Alben';
+
+  @override
   String get loginSubtitle =>
       'Melde dich an, um Fotos auf ${AppBrand.current.websiteHost} zu sichern';
 

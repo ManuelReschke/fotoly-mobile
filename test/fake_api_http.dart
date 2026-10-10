@@ -17,6 +17,18 @@ class FakeApiHttp implements ApiHttp {
     this.albumsBody,
     this.albumWriteStatus = 200,
     this.albumWriteBody,
+    this.membersStatus = 200,
+    this.membersBody,
+    this.memberPostStatus = 201,
+    this.memberPostBody,
+    this.memberDeleteStatus = 204,
+    this.memberDeleteBody,
+    this.categoriesStatus = 200,
+    this.categoriesBody,
+    this.categoryCreateStatus = 201,
+    this.categoryCreateBody,
+    this.categoryAssignStatus = 200,
+    this.categoryAssignBody,
     this.imagesStatus = 200,
     this.imagesBody,
     this.imageStatusByUuid = const {},
@@ -45,6 +57,18 @@ class FakeApiHttp implements ApiHttp {
   /// Status and body for POST/PATCH/PUT/DELETE under `/albums`.
   int albumWriteStatus;
   String? albumWriteBody;
+  int membersStatus;
+  String? membersBody;
+  int memberPostStatus;
+  String? memberPostBody;
+  int memberDeleteStatus;
+  String? memberDeleteBody;
+  int categoriesStatus;
+  String? categoriesBody;
+  int categoryCreateStatus;
+  String? categoryCreateBody;
+  int categoryAssignStatus;
+  String? categoryAssignBody;
   int imagesStatus;
   String? imagesBody;
 
@@ -67,6 +91,13 @@ class FakeApiHttp implements ApiHttp {
   final List<http.BaseRequest> sent = [];
 
   static final _imagePath = RegExp(r'/images/([^/]+)$');
+  static final _membersPath = RegExp(r'/albums/\d+/members(?:/\d+)?$');
+  static final _categoryAssignPath = RegExp(r'/albums/\d+/categories$');
+
+  static const _defaultMember =
+      '{"user_id":3,"username":"ada","role":"viewer","origin":"invite","created_at":"2026-01-01T00:00:00Z","already_member":false}';
+  static const _defaultCategory =
+      '{"id":1,"name":"Trip","slug":"trip","scope":"private","album_count":0}';
 
   @override
   Future<http.Response> get(Uri url, {Map<String, String>? headers}) async {
@@ -83,6 +114,22 @@ class FakeApiHttp implements ApiHttp {
       return http.Response(
         profileBody ?? '{}',
         profileStatus,
+        headers: {'content-type': 'application/json'},
+        request: http.Request('GET', url),
+      );
+    }
+    if (url.path.endsWith('/album-categories')) {
+      return http.Response(
+        categoriesBody ?? '{"categories":[]}',
+        categoriesStatus,
+        headers: {'content-type': 'application/json'},
+        request: http.Request('GET', url),
+      );
+    }
+    if (_membersPath.hasMatch(url.path)) {
+      return http.Response(
+        membersBody ?? '{"members":[]}',
+        membersStatus,
         headers: {'content-type': 'application/json'},
         request: http.Request('GET', url),
       );
@@ -160,6 +207,8 @@ class FakeApiHttp implements ApiHttp {
     if (url.path.endsWith('/auth/logout')) {
       return http.Response('', logoutStatus);
     }
+    final sharing = _sharingWrite('POST', url);
+    if (sharing != null) return sharing;
     if (url.path.contains('/albums')) {
       return _albumWrite(url);
     }
@@ -203,8 +252,45 @@ class FakeApiHttp implements ApiHttp {
     Object? body,
   }) async {
     sent.add(_RecordedRequest(method, url, headers ?? {}, body: body));
+    final sharing = _sharingWrite(method, url);
+    if (sharing != null) return sharing;
     if (url.path.contains('/albums')) return _albumWrite(url);
     return http.Response('not found', 404);
+  }
+
+  http.Response? _sharingWrite(String method, Uri url) {
+    if (url.path.endsWith('/album-categories')) {
+      return http.Response(
+        categoryCreateBody ?? _defaultCategory,
+        categoryCreateStatus,
+        headers: {'content-type': 'application/json'},
+        request: http.Request(method, url),
+      );
+    }
+    if (_membersPath.hasMatch(url.path)) {
+      if (method == 'DELETE') {
+        return http.Response(
+          memberDeleteBody ?? '',
+          memberDeleteStatus,
+          request: http.Request(method, url),
+        );
+      }
+      return http.Response(
+        memberPostBody ?? _defaultMember,
+        memberPostStatus,
+        headers: {'content-type': 'application/json'},
+        request: http.Request(method, url),
+      );
+    }
+    if (_categoryAssignPath.hasMatch(url.path)) {
+      return http.Response(
+        categoryAssignBody ?? '{"categories":[]}',
+        categoryAssignStatus,
+        headers: {'content-type': 'application/json'},
+        request: http.Request(method, url),
+      );
+    }
+    return null;
   }
 
   http.Response _albumWrite(Uri url) {

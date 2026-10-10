@@ -255,6 +255,158 @@ class AppStringsEn extends AppStrings {
   String get albumActionsTooltip => 'Album actions';
 
   @override
+  String get albumMembers => 'Members';
+
+  @override
+  String get albumCategories => 'Categories';
+
+  @override
+  String get albumMembersEmpty => 'No members yet.';
+
+  @override
+  String get albumMembersHelp => 'Invited people can view this album.';
+
+  @override
+  String get albumInviteLabel => 'Username';
+
+  @override
+  String get albumInviteAction => 'Invite';
+
+  @override
+  String get albumInviteSent => 'Invitation sent';
+
+  @override
+  String get albumAlreadyMember => 'This person is already a member.';
+
+  @override
+  String get albumMemberRemoved => 'Member removed';
+
+  @override
+  String get albumRemoveMember => 'Remove';
+
+  @override
+  String get albumRemoveMemberTitle => 'Remove member?';
+
+  @override
+  String get albumRemoveMemberBody => 'They lose access to this album.';
+
+  @override
+  String get albumMemberRoleViewer => 'Can view';
+
+  @override
+  String get albumMemberOriginInvite => 'Invited';
+
+  @override
+  String get albumMemberOriginLinkSave => 'Saved from link';
+
+  @override
+  String get albumMemberUserNotFound => 'No active account with that name.';
+
+  @override
+  String get albumMemberNotFound => 'Member not found.';
+
+  @override
+  String get albumCannotInviteOwner =>
+      'You cannot invite yourself or the album owner.';
+
+  @override
+  String get albumMemberLimit => 'This album has reached the member limit.';
+
+  @override
+  String get albumUsernameRequired => 'Enter a username.';
+
+  @override
+  String get albumUsernameTooLong => 'That username is too long.';
+
+  @override
+  String get albumMemberAmbiguous =>
+      'Several accounts share that name. Choose one.';
+
+  @override
+  String get albumMemberInviteError => 'Could not send the invitation.';
+
+  @override
+  String get albumMemberLoadError => 'Could not load members.';
+
+  @override
+  String get albumMemberRemoveError => 'Could not remove the member.';
+
+  @override
+  String get albumCategoriesUnknownHelp =>
+      'Saving replaces every category on this album. Fotoly does not return the current assignment, so the selection starts empty.';
+
+  @override
+  String get albumCategoriesKnownHelp =>
+      'Saving replaces every category on this album.';
+
+  @override
+  String get albumCategoriesEmpty => 'No categories yet.';
+
+  @override
+  String get albumCategoryPrivate => 'Private';
+
+  @override
+  String get albumCategoryPublic => 'Public';
+
+  @override
+  String get albumCategoryPublicNeedsAlbum =>
+      'Public categories need a public album.';
+
+  @override
+  String get albumCategoryNameLabel => 'New private category';
+
+  @override
+  String get albumCategoryCreate => 'Create';
+
+  @override
+  String get albumCategoryCreated => 'Category created';
+
+  @override
+  String get albumCategoryNameInvalid => 'Letters, digits, and hyphens only.';
+
+  @override
+  String get albumCategoryNameRequired => 'Enter a name.';
+
+  @override
+  String get albumCategoryNameTooLong => 'That name is too long.';
+
+  @override
+  String get albumCategoryExists =>
+      'A private category with this name already exists.';
+
+  @override
+  String get albumCategorySave => 'Save';
+
+  @override
+  String get albumCategorySaved => 'Categories saved';
+
+  @override
+  String get albumCategoryClear => 'Remove all';
+
+  @override
+  String get albumCategoryReplaceTitle => 'Replace categories?';
+
+  @override
+  String get albumCategoryReplaceBody =>
+      'This selection replaces every category on this album.';
+
+  @override
+  String get albumCategorySaveError => 'Could not save categories.';
+
+  @override
+  String get albumCategoryLoadError => 'Could not load categories.';
+
+  @override
+  String get albumCategoryCreateError => 'Could not create the category.';
+
+  @override
+  String get albumCategoryTooMany => 'At most 100 categories.';
+
+  @override
+  String albumCategoryCount(int count) =>
+      count == 1 ? '1 album' : '$count albums';
+
+  @override
   String get loginSubtitle =>
       'Sign in to back up photos to ${AppBrand.current.websiteHost}';
 

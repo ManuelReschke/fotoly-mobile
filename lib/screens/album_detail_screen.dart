@@ -17,7 +17,9 @@ import '../services/auth_service.dart';
 import '../services/gallery_service.dart';
 import '../services/pixelfox_api_client.dart';
 import '../widgets/add_album_images_sheet.dart';
+import '../widgets/album_categories_sheet.dart';
 import '../widgets/album_editor_sheet.dart';
+import '../widgets/album_members_sheet.dart';
 import '../widgets/gallery_image.dart';
 import 'gallery_viewer.dart';
 
@@ -103,6 +105,37 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
     } catch (e) {
       _snack(localizeAlbumError(s, e, fallback: s.albumSaveError));
     }
+  }
+
+  Future<void> _members(PixelfoxAlbum album) {
+    final albums = context.read<AlbumService>();
+    return showAlbumMembersSheet(
+      context: context,
+      load: () => albums.members(album.id),
+      invite: ({userId, username}) =>
+          albums.inviteMember(album.id, userId: userId, username: username),
+      remove: (userId) => albums.removeMember(album.id, userId),
+    );
+  }
+
+  Future<void> _categories(PixelfoxAlbum album) {
+    final albums = context.read<AlbumService>();
+    return showAlbumCategoriesSheet(
+      context: context,
+      albumIsPublic: album.isPublic,
+      initialAssigned: albums.assignedCategories(album.id),
+      load: albums.listCategories,
+      create: albums.createCategory,
+      save:
+          ({
+            required List<int> privateCategoryIds,
+            required List<int> publicCategoryIds,
+          }) => albums.setCategories(
+            album.id,
+            privateCategoryIds: privateCategoryIds,
+            publicCategoryIds: publicCategoryIds,
+          ),
+    );
   }
 
   Future<void> _delete(PixelfoxAlbum album) async {
@@ -412,6 +445,10 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
                 switch (value) {
                   case 'edit':
                     unawaited(_edit(album));
+                  case 'members':
+                    unawaited(_members(album));
+                  case 'categories':
+                    unawaited(_categories(album));
                   case 'copy':
                     unawaited(_copyLink(album));
                   case 'open':
@@ -424,6 +461,16 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
               },
               itemBuilder: (context) => [
                 PopupMenuItem(value: 'edit', child: Text(s.editAlbum)),
+                PopupMenuItem(
+                  key: const Key('album-action-members'),
+                  value: 'members',
+                  child: Text(s.albumMembers),
+                ),
+                PopupMenuItem(
+                  key: const Key('album-action-categories'),
+                  value: 'categories',
+                  child: Text(s.albumCategories),
+                ),
                 if (album.viewUrl.isNotEmpty) ...[
                   PopupMenuItem(value: 'copy', child: Text(s.copyAlbumLink)),
                   PopupMenuItem(value: 'open', child: Text(s.openAlbumLink)),
