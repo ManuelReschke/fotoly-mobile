@@ -15,6 +15,8 @@ class FakeApiHttp implements ApiHttp {
     this.uploadBody,
     this.albumsStatus = 200,
     this.albumsBody,
+    this.albumWriteStatus = 200,
+    this.albumWriteBody,
     this.imagesStatus = 200,
     this.imagesBody,
     this.imageStatusByUuid = const {},
@@ -39,6 +41,10 @@ class FakeApiHttp implements ApiHttp {
   String? uploadBody;
   int albumsStatus;
   String? albumsBody;
+
+  /// Status and body for POST/PATCH/PUT/DELETE under `/albums`.
+  int albumWriteStatus;
+  String? albumWriteBody;
   int imagesStatus;
   String? imagesBody;
 
@@ -154,7 +160,60 @@ class FakeApiHttp implements ApiHttp {
     if (url.path.endsWith('/auth/logout')) {
       return http.Response('', logoutStatus);
     }
+    if (url.path.contains('/albums')) {
+      return _albumWrite(url);
+    }
     return http.Response('not found', 404);
+  }
+
+  @override
+  Future<http.Response> patch(
+    Uri url, {
+    Map<String, String>? headers,
+    Object? body,
+    Encoding? encoding,
+  }) {
+    return _recordWrite('PATCH', url, headers: headers, body: body);
+  }
+
+  @override
+  Future<http.Response> put(
+    Uri url, {
+    Map<String, String>? headers,
+    Object? body,
+    Encoding? encoding,
+  }) {
+    return _recordWrite('PUT', url, headers: headers, body: body);
+  }
+
+  @override
+  Future<http.Response> delete(
+    Uri url, {
+    Map<String, String>? headers,
+    Object? body,
+    Encoding? encoding,
+  }) {
+    return _recordWrite('DELETE', url, headers: headers, body: body);
+  }
+
+  Future<http.Response> _recordWrite(
+    String method,
+    Uri url, {
+    Map<String, String>? headers,
+    Object? body,
+  }) async {
+    sent.add(_RecordedRequest(method, url, headers ?? {}, body: body));
+    if (url.path.contains('/albums')) return _albumWrite(url);
+    return http.Response('not found', 404);
+  }
+
+  http.Response _albumWrite(Uri url) {
+    return http.Response(
+      albumWriteBody ?? '{}',
+      albumWriteStatus,
+      headers: {'content-type': 'application/json'},
+      request: http.Request('POST', url),
+    );
   }
 
   @override

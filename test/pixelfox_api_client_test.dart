@@ -305,6 +305,21 @@ void main() {
       expect(log.first.url, contains('cursor=cursor-page-2'));
     });
 
+    test('passes album_id when listing one album', () async {
+      final fake = FakeApiHttp(
+        imagesStatus: 200,
+        imagesBody: '{"items":[],"has_more":false}',
+      );
+      final log = <ApiRequestLog>[];
+      final client = PixelfoxApiClient(
+        apiKey: 'k',
+        httpClient: fake,
+        requestLog: log,
+      );
+      await client.listImages(albumId: 19);
+      expect(log.first.url, contains('album_id=19'));
+    });
+
     test('401 throws PixelfoxApiException', () async {
       final fake = FakeApiHttp(
         imagesStatus: 401,

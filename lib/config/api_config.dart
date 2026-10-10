@@ -22,6 +22,19 @@ class ApiConfig {
   static String imageStatusUrl(String uuid) => '$apiRoot/images/$uuid/status';
   static String imageUrl(String uuid) => '$apiRoot/images/$uuid';
 
+  /// Turns an API path such as `/a/{token}` into an absolute URI.
+  static Uri? absolute(String pathOrUrl) {
+    final value = pathOrUrl.trim();
+    if (value.isEmpty) return null;
+    final parsed = Uri.tryParse(value);
+    if (parsed != null && parsed.hasScheme) return parsed;
+    final root = baseUrl.endsWith('/')
+        ? baseUrl.substring(0, baseUrl.length - 1)
+        : baseUrl;
+    final suffix = value.startsWith('/') ? value : '/$value';
+    return Uri.tryParse('$root$suffix');
+  }
+
   /// Header name for API key auth (preferred per docs).
   static const String apiKeyHeader = 'X-API-Key';
 

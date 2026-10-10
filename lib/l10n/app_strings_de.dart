@@ -60,6 +60,205 @@ class AppStringsDe extends AppStrings {
   String get galleryImageLoadError => 'Bild nicht verfügbar';
 
   @override
+  String get navAlbums => 'Alben';
+
+  @override
+  String get albumsTitle => 'Alben';
+
+  @override
+  String get albumsEmptyTitle => 'Noch keine Alben';
+
+  @override
+  String get albumsEmptyBody =>
+      'Erstelle ein Album, um Fotos zu sammeln, hochzuladen und zu teilen.';
+
+  @override
+  String get albumsRefreshTooltip => 'Alben aktualisieren';
+
+  @override
+  String get createAlbum => 'Neues Album';
+
+  @override
+  String get editAlbum => 'Album bearbeiten';
+
+  @override
+  String get deleteAlbum => 'Album löschen';
+
+  @override
+  String get deleteAlbumTitle => 'Album löschen?';
+
+  @override
+  String get deleteAlbumBody =>
+      'Das Album wird entfernt. Die Fotos bleiben in deiner Bibliothek.';
+
+  @override
+  String get albumTitleLabel => 'Titel';
+
+  @override
+  String get albumDescriptionLabel => 'Beschreibung';
+
+  @override
+  String get albumPublicLabel => 'Öffentlich';
+
+  @override
+  String get albumPublicSubtitle => 'Sichtbar für alle mit dem Link';
+
+  @override
+  String get albumNsfwLabel => 'Sensibler Inhalt';
+
+  @override
+  String get albumNsfwSubtitle => 'Album als NSFW markieren';
+
+  @override
+  String get albumSortLabel => 'Bildreihenfolge';
+
+  @override
+  String get albumSortHelp =>
+      'Gilt für die öffentliche Albumseite. In der App siehst du die neuesten Bilder zuerst.';
+
+  @override
+  String get albumSortNewest => 'Neueste zuerst';
+
+  @override
+  String get albumSortOldest => 'Älteste zuerst';
+
+  @override
+  String get albumPasswordLabel => 'Freigabe-Passwort';
+
+  @override
+  String get albumPasswordHint => 'Optional, für die öffentliche Seite';
+
+  @override
+  String get albumChangePassword => 'Passwort ändern oder entfernen';
+
+  @override
+  String get albumPasswordClearHint =>
+      'Feld leeren, um das Passwort zu entfernen.';
+
+  @override
+  String get albumTitleRequired => 'Bitte einen Titel eingeben.';
+
+  @override
+  String get albumSave => 'Speichern';
+
+  @override
+  String get albumCreated => 'Album erstellt';
+
+  @override
+  String get albumSaved => 'Album gespeichert';
+
+  @override
+  String get albumDeleted => 'Album gelöscht';
+
+  @override
+  String get albumLimitReached => 'Das Album-Limit deines Tarifs ist erreicht.';
+
+  @override
+  String get albumNotFound => 'Album nicht gefunden.';
+
+  @override
+  String get albumAuthError =>
+      'Die Anmeldung ist abgelaufen. Bitte erneut anmelden.';
+
+  @override
+  String get albumSaveError => 'Album konnte nicht gespeichert werden.';
+
+  @override
+  String get albumDeleteError => 'Album konnte nicht gelöscht werden.';
+
+  @override
+  String get albumActionError => 'Das hat nicht geklappt.';
+
+  @override
+  String get albumPhotosEmptyTitle => 'Noch keine Bilder in diesem Album';
+
+  @override
+  String get albumPhotosEmptyBody =>
+      'Lade neue Fotos hoch oder nimm welche aus der Bibliothek.';
+
+  @override
+  String get addPhotos => 'Hinzufügen';
+
+  @override
+  String get uploadNewPhotos => 'Neue Fotos hochladen';
+
+  @override
+  String get addExistingPhotos => 'Aus der Bibliothek';
+
+  @override
+  String get removeFromAlbum => 'Aus Album entfernen';
+
+  @override
+  String get removeFromAlbumBody =>
+      'Das Foto bleibt in der Bibliothek und wird nur aus diesem Album genommen.';
+
+  @override
+  String get setAsCover => 'Als Cover';
+
+  @override
+  String get clearCover => 'Cover entfernen';
+
+  @override
+  String get coverUpdated => 'Cover gespeichert';
+
+  @override
+  String get copyAlbumLink => 'Link kopieren';
+
+  @override
+  String get albumLinkCopied => 'Link kopiert';
+
+  @override
+  String get openAlbumLink => 'Im Browser öffnen';
+
+  @override
+  String get albumCouldNotOpenLink => 'Link konnte nicht geöffnet werden.';
+
+  @override
+  String get uploadingPhotos => 'Fotos werden hochgeladen…';
+
+  @override
+  String uploadFinished({required int uploaded, required int failed}) {
+    if (failed == 0) {
+      return uploaded == 1
+          ? '1 Foto hochgeladen'
+          : '$uploaded Fotos hochgeladen';
+    }
+    return '$uploaded hochgeladen, $failed fehlgeschlagen';
+  }
+
+  @override
+  String get addToAlbum => 'Ins Album';
+
+  @override
+  String selectedCount(int count) =>
+      count == 1 ? '1 ausgewählt' : '$count ausgewählt';
+
+  @override
+  String photosAdded(int count) =>
+      count == 1 ? '1 Foto hinzugefügt' : '$count Fotos hinzugefügt';
+
+  @override
+  String get photoRemoved => 'Aus dem Album entfernt';
+
+  @override
+  String get privateAlbum => 'Privat';
+
+  @override
+  String get publicAlbum => 'Öffentlich';
+
+  @override
+  String get nsfwBadge => 'NSFW';
+
+  @override
+  String get loadMore => 'Mehr laden';
+
+  @override
+  String get cancelAction => 'Abbrechen';
+
+  @override
+  String get albumActionsTooltip => 'Album-Aktionen';
+
+  @override
   String get loginSubtitle =>
       'Melde dich an, um Fotos auf ${AppBrand.current.websiteHost} zu sichern';
 

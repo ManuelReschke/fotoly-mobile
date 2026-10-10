@@ -25,5 +25,6 @@ void main() {
     await pumpL10n(tester, GalleryNavBar(index: 0, onChanged: (_) {}));
     expect(find.text('Backup'), findsOneWidget);
     expect(find.text('Gallery'), findsOneWidget);
+    expect(find.text('Albums'), findsOneWidget);
   });
 }

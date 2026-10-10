@@ -27,6 +27,10 @@ class GalleryNavBar extends StatelessWidget {
           icon: const Icon(Icons.photo_library_outlined),
           label: s.navGallery,
         ),
+        NavigationDestination(
+          icon: const Icon(Icons.photo_album_outlined),
+          label: s.navAlbums,
+        ),
       ],
     );
   }

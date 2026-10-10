@@ -7,9 +7,12 @@ import '../models/pixelfox_image.dart';
 import 'pixelfox_api_client.dart';
 
 class GalleryService extends ChangeNotifier {
-  GalleryService({required this._clientProvider});
+  GalleryService({required this._clientProvider, this.albumId});
 
   final PixelfoxApiClient Function() _clientProvider;
+
+  /// When set, pages are loaded with `album_id`.
+  final int? albumId;
 
   List<PixelfoxImage> _items = [];
   bool _hasMore = false;
@@ -44,7 +47,7 @@ class GalleryService extends ChangeNotifier {
     _loading = true;
     notifyListeners();
     try {
-      final page = await _clientProvider().listImages();
+      final page = await _clientProvider().listImages(albumId: albumId);
       _items = page.items;
       _hasMore = page.hasMore;
       _nextCursor = page.nextCursor;
@@ -69,7 +72,10 @@ class GalleryService extends ChangeNotifier {
     _loadingMore = true;
     notifyListeners();
     try {
-      final page = await _clientProvider().listImages(cursor: _nextCursor);
+      final page = await _clientProvider().listImages(
+        cursor: _nextCursor,
+        albumId: albumId,
+      );
       _items = [..._items, ...page.items];
       _hasMore = page.hasMore;
       _nextCursor = page.nextCursor;
@@ -80,6 +86,14 @@ class GalleryService extends ChangeNotifier {
       _loadingMore = false;
       notifyListeners();
     }
+  }
+
+  /// Drops one image from the loaded page without a network call.
+  void forget(String imageUuid) {
+    final next = _items.where((item) => item.imageUuid != imageUuid).toList();
+    if (next.length == _items.length) return;
+    _items = next;
+    notifyListeners();
   }
 
   void onBackupPhaseChanged(BackupPhase previous, BackupPhase next) {

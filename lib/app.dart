@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import 'l10n/locale_controller.dart';
 import 'screens/login_screen.dart';
+import 'services/album_service.dart';
 import 'services/auth_service.dart';
 import 'services/backup_ledger.dart';
 import 'services/backup_service.dart';
@@ -77,6 +78,7 @@ class _AuthenticatedShellState extends State<_AuthenticatedShell>
     with WidgetsBindingObserver {
   BackupService? _backup;
   GalleryService? _gallery;
+  AlbumService? _albums;
   bool _booting = false;
 
   @override
@@ -105,6 +107,13 @@ class _AuthenticatedShellState extends State<_AuthenticatedShell>
       },
     );
     _gallery = GalleryService(
+      clientProvider: () {
+        final client = auth.client;
+        if (client == null) throw StateError('Not authenticated');
+        return client;
+      },
+    );
+    _albums = AlbumService(
       clientProvider: () {
         final client = auth.client;
         if (client == null) throw StateError('Not authenticated');
@@ -182,6 +191,7 @@ class _AuthenticatedShellState extends State<_AuthenticatedShell>
     WidgetsBinding.instance.removeObserver(this);
     _backup?.dispose();
     _gallery?.dispose();
+    _albums?.dispose();
     super.dispose();
   }
 
@@ -191,6 +201,7 @@ class _AuthenticatedShellState extends State<_AuthenticatedShell>
       providers: [
         ChangeNotifierProvider<BackupService>.value(value: _backup!),
         ChangeNotifierProvider<GalleryService>.value(value: _gallery!),
+        ChangeNotifierProvider<AlbumService>.value(value: _albums!),
       ],
       child: const MainShell(),
     );

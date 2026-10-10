@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/backup_status.dart';
+import '../screens/albums_screen.dart';
 import '../screens/gallery_screen.dart';
 import '../screens/home_screen.dart';
 import '../services/backup_service.dart';
@@ -18,6 +19,7 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _index = 0;
   bool _galleryVisited = false;
+  bool _albumsVisited = false;
   BackupPhase _lastPhase = BackupPhase.idle;
   BackupService? _backup;
 
@@ -59,6 +61,8 @@ class _MainShellState extends State<MainShell> {
           // GalleryScreen.initState calls ensureLoaded; keep it unmounted
           // until the first Gallery tab visit so login does not GET /images.
           _galleryVisited ? const GalleryScreen() : const SizedBox.shrink(),
+          // Same as the gallery: stay unmounted until the first visit.
+          _albumsVisited ? const AlbumsScreen() : const SizedBox.shrink(),
         ],
       ),
       bottomNavigationBar: GalleryNavBar(
@@ -67,6 +71,7 @@ class _MainShellState extends State<MainShell> {
           setState(() {
             _index = value;
             if (value == 1) _galleryVisited = true;
+            if (value == 2) _albumsVisited = true;
           });
         },
       ),

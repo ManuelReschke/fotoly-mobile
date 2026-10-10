@@ -53,6 +53,27 @@ abstract class ApiHttp {
     Encoding? encoding,
   });
 
+  Future<http.Response> patch(
+    Uri url, {
+    Map<String, String>? headers,
+    Object? body,
+    Encoding? encoding,
+  });
+
+  Future<http.Response> put(
+    Uri url, {
+    Map<String, String>? headers,
+    Object? body,
+    Encoding? encoding,
+  });
+
+  Future<http.Response> delete(
+    Uri url, {
+    Map<String, String>? headers,
+    Object? body,
+    Encoding? encoding,
+  });
+
   Future<http.StreamedResponse> send(http.BaseRequest request);
 }
 
@@ -72,6 +93,30 @@ class DefaultApiHttp implements ApiHttp {
     Object? body,
     Encoding? encoding,
   }) => _client.post(url, headers: headers, body: body, encoding: encoding);
+
+  @override
+  Future<http.Response> patch(
+    Uri url, {
+    Map<String, String>? headers,
+    Object? body,
+    Encoding? encoding,
+  }) => _client.patch(url, headers: headers, body: body, encoding: encoding);
+
+  @override
+  Future<http.Response> put(
+    Uri url, {
+    Map<String, String>? headers,
+    Object? body,
+    Encoding? encoding,
+  }) => _client.put(url, headers: headers, body: body, encoding: encoding);
+
+  @override
+  Future<http.Response> delete(
+    Uri url, {
+    Map<String, String>? headers,
+    Object? body,
+    Encoding? encoding,
+  }) => _client.delete(url, headers: headers, body: body, encoding: encoding);
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) =>
@@ -182,11 +227,7 @@ class PixelfoxApiClient {
     required String password,
   }) async {
     final uri = Uri.parse(ApiConfig.authRegisterUrl());
-    final body = {
-      'username': username,
-      'email': email,
-      'password': password,
-    };
+    final body = {'username': username, 'email': email, 'password': password};
     final headers = {..._jsonHeaders, 'Content-Type': 'application/json'};
     _log(
       ApiRequestLog(
@@ -361,11 +402,19 @@ class PixelfoxApiClient {
   }
 
   /// Lists account images with optional cursor paging.
-  Future<PixelfoxImagePage> listImages({int limit = 50, String? cursor}) async {
+  ///
+  /// [albumId] restricts the page to one owned album. Order stays newest first;
+  /// the album's own sort applies on the public album page.
+  Future<PixelfoxImagePage> listImages({
+    int limit = 50,
+    String? cursor,
+    int? albumId,
+  }) async {
     final uri = Uri.parse('$_apiRoot/images').replace(
       queryParameters: {
         'limit': '$limit',
         if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
+        if (albumId != null) 'album_id': '$albumId',
       },
     );
     _log(
@@ -483,13 +532,156 @@ class PixelfoxApiClient {
     required List<int> bytes,
     bool originalOnly = true,
     int? albumId,
+    bool? isNsfw,
   }) async {
     final session = await createUploadSession(
       fileSize: bytes.length,
       originalOnly: originalOnly,
       albumId: albumId,
+      isNsfw: isNsfw,
     );
     return uploadFile(session: session, filename: filename, bytes: bytes);
+  }
+
+  /// Creates an album. Returns the summary from HTTP 201.
+  Future<PixelfoxAlbum> createAlbum(AlbumInput input) async {
+    final response = await _sendJson(
+      'POST',
+      Uri.parse('$_apiRoot/albums'),
+      input.toJson(),
+    );
+    return _readAlbum(response, 'Could not create album');
+  }
+
+  /// Updates album metadata. Omitted [AlbumInput.sharePassword] is left as-is.
+  Future<PixelfoxAlbum> updateAlbum(int id, AlbumInput input) async {
+    final response = await _sendJson(
+      'PATCH',
+      Uri.parse('$_apiRoot/albums/$id'),
+      input.toJson(),
+    );
+    return _readAlbum(response, 'Could not update album');
+  }
+
+  /// Deletes an album. Images stay in the library.
+  Future<void> deleteAlbum(int id) async {
+    final response = await _sendJson(
+      'DELETE',
+      Uri.parse('$_apiRoot/albums/$id'),
+    );
+    _ensureSuccess(response, 'Could not delete album');
+  }
+
+  /// Assigns owned images to an album. Unknown images fail the whole request.
+  Future<AlbumImageAssignResult> addImagesToAlbum(
+    int id,
+    List<String> imageUuids,
+  ) async {
+    final response = await _sendJson(
+      'POST',
+      Uri.parse('$_apiRoot/albums/$id/images'),
+      {'image_uuids': imageUuids},
+    );
+    _ensureSuccess(response, 'Could not add images to album');
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map) {
+      throw PixelfoxApiException(
+        'Could not add images to album',
+        statusCode: response.statusCode,
+        body: response.body,
+      );
+    }
+    return AlbumImageAssignResult.fromJson(Map<String, dynamic>.from(decoded));
+  }
+
+  /// Removes one image from an album. The library image stays.
+  Future<void> removeImageFromAlbum(int id, String imageUuid) async {
+    final response = await _sendJson(
+      'DELETE',
+      Uri.parse('$_apiRoot/albums/$id/images/$imageUuid'),
+    );
+    _ensureSuccess(response, 'Could not remove image from album');
+  }
+
+  /// Sets the cover to an image already in the album.
+  /// An empty [imageUuid] clears the cover.
+  Future<PixelfoxAlbum> setAlbumCover(
+    int id, {
+    required String imageUuid,
+  }) async {
+    final response = await _sendJson(
+      'PUT',
+      Uri.parse('$_apiRoot/albums/$id/cover'),
+      {'image_uuid': imageUuid},
+    );
+    return _readAlbum(response, 'Could not update album cover');
+  }
+
+  Future<http.Response> _sendJson(
+    String method,
+    Uri uri, [
+    Map<String, dynamic>? jsonBody,
+  ]) async {
+    final headers = {
+      ..._authHeaders,
+      if (jsonBody != null) 'Content-Type': 'application/json',
+    };
+    final encoded = jsonBody == null ? null : jsonEncode(jsonBody);
+    _log(
+      ApiRequestLog(
+        method: method,
+        url: uri.toString(),
+        headers: headers,
+        jsonBody: jsonBody,
+      ),
+    );
+    switch (method) {
+      case 'POST':
+        return _http.post(uri, headers: headers, body: encoded);
+      case 'PATCH':
+        return _http.patch(uri, headers: headers, body: encoded);
+      case 'PUT':
+        return _http.put(uri, headers: headers, body: encoded);
+      case 'DELETE':
+        return _http.delete(uri, headers: headers, body: encoded);
+      default:
+        throw ArgumentError.value(method, 'method');
+    }
+  }
+
+  PixelfoxAlbum _readAlbum(http.Response response, String fallback) {
+    _ensureSuccess(response, fallback);
+    final decoded = jsonDecode(response.body);
+    if (decoded is! Map) {
+      throw PixelfoxApiException(
+        fallback,
+        statusCode: response.statusCode,
+        body: response.body,
+      );
+    }
+    return PixelfoxAlbum.fromJson(Map<String, dynamic>.from(decoded));
+  }
+
+  void _ensureSuccess(http.Response response, String fallback) {
+    if (response.statusCode >= 200 && response.statusCode < 300) return;
+    throw PixelfoxApiException(
+      _serverMessage(response.body) ?? fallback,
+      statusCode: response.statusCode,
+      body: response.body,
+    );
+  }
+
+  String? _serverMessage(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map) {
+        final message = decoded['message'];
+        if (message is String && message.trim().isNotEmpty) {
+          return message.trim();
+        }
+      }
+    } catch (_) {}
+    return null;
   }
 
   /// Whether the image resource still exists for this account.
