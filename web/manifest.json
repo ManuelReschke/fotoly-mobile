@@ -3,7 +3,7 @@
     "short_name": "Fotoly",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0F172A",
+    "background_color": "#081C37",
     "theme_color": "#0F172A",
     "description": "Fotoly mobile backup app",
     "orientation": "portrait-primary",

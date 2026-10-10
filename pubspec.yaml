@@ -31,21 +31,22 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.4
 
 # Generate launcher icons: dart run flutter_launcher_icons
-# Master: assets/brand/source-app-icon.png
-# Square 1024 export: assets/brand/fotoly-app-icon.png + Schiefer adaptive background.
+# Master: assets/brand/fotoly-app-icon.png (1024, Fotoly mark on #081C37).
+# Inset 16% keeps the f-tail inside Android's circular mask.
 flutter_launcher_icons:
   android: true
   ios: true
   web:
     generate: true
     image_path: assets/brand/fotoly-app-icon.png
-    background_color: "#0F172A"
+    background_color: "#081C37"
     theme_color: "#0F172A"
   image_path: assets/brand/fotoly-app-icon.png
-  adaptive_icon_background: "#0F172A"
+  adaptive_icon_background: "#081C37"
   adaptive_icon_foreground: assets/brand/fotoly-app-icon.png
+  adaptive_icon_foreground_inset: 16
   remove_alpha_ios: true
-  background_color_ios: "#0F172A"
+  background_color_ios: "#081C37"
 
 flutter:
   uses-material-design: true
