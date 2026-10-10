@@ -5,6 +5,7 @@ import '../l10n/l10n_scope.dart';
 import '../models/pixelfox_image.dart';
 import '../services/gallery_service.dart';
 import '../widgets/gallery_image.dart';
+import '../widgets/gallery_zoom.dart';
 
 class GalleryViewer extends StatefulWidget {
   const GalleryViewer({
@@ -27,6 +28,12 @@ class GalleryViewer extends StatefulWidget {
 class _GalleryViewerState extends State<GalleryViewer> {
   late final PageController _controller;
   late int _index;
+  bool _zoomLocksPaging = false;
+
+  void _setZoomLock(bool locked) {
+    if (!mounted || locked == _zoomLocksPaging) return;
+    setState(() => _zoomLocksPaging = locked);
+  }
 
   @override
   void initState() {
@@ -118,6 +125,9 @@ class _GalleryViewerState extends State<GalleryViewer> {
           : null,
       body: PageView.builder(
         controller: _controller,
+        physics: _zoomLocksPaging
+            ? const NeverScrollableScrollPhysics()
+            : const PageScrollPhysics(),
         itemCount: items.length,
         onPageChanged: (index) {
           setState(() => _index = index);
@@ -139,7 +149,14 @@ class _GalleryViewerState extends State<GalleryViewer> {
                 );
           return GestureDetector(
             onTap: () => Navigator.pop(context),
-            child: image,
+            child: GalleryZoom(
+              key: ValueKey(item.imageUuid),
+              onZoomChanged: (zoomed) {
+                if (index != _index) return;
+                _setZoomLock(zoomed);
+              },
+              child: image,
+            ),
           );
         },
       ),
