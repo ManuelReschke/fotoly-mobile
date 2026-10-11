@@ -26,6 +26,9 @@ abstract class AppStrings {
   String get galleryLoadError;
   String get retry;
   String get galleryRefreshTooltip;
+  String get gallerySortTooltip;
+  String get gallerySortNewest;
+  String get gallerySortOldest;
   String get galleryImageLoadError;
 
   // —— Albums ——

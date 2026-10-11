@@ -75,6 +75,7 @@ class AppBrand {
   String get backupLedgerKey => '${id}_backup_ledger_v1';
   String get localePrefsKey => '${id}_locale';
   String get themeModePrefsKey => '${id}_theme_mode';
+  String get gallerySortPrefsKey => '${id}_gallery_sort';
 
   static const pixelfox = AppBrand(
     id: 'pixelfox',

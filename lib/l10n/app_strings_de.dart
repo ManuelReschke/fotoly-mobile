@@ -57,6 +57,15 @@ class AppStringsDe extends AppStrings {
   String get galleryRefreshTooltip => 'Galerie aktualisieren';
 
   @override
+  String get gallerySortTooltip => 'Bildreihenfolge';
+
+  @override
+  String get gallerySortNewest => 'Neueste zuerst';
+
+  @override
+  String get gallerySortOldest => 'Älteste zuerst';
+
+  @override
   String get galleryImageLoadError => 'Bild nicht verfügbar';
 
   @override

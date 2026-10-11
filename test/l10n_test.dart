@@ -103,6 +103,12 @@ void main() {
     expect(en.retry, 'Try again');
     expect(de.galleryLoadError, contains('nicht geladen'));
     expect(en.galleryImageLoadError, 'Image unavailable');
+    expect(de.gallerySortTooltip, 'Bildreihenfolge');
+    expect(de.gallerySortNewest, 'Neueste zuerst');
+    expect(de.gallerySortOldest, 'Älteste zuerst');
+    expect(en.gallerySortTooltip, 'Photo order');
+    expect(en.gallerySortNewest, 'Newest first');
+    expect(en.gallerySortOldest, 'Oldest first');
   });
 
   test('register and check-email copy exists in DE and EN', () {

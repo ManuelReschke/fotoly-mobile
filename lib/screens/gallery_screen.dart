@@ -105,6 +105,24 @@ class _GalleryScreenState extends State<GalleryScreen> {
       appBar: AppBar(
         title: PixelfoxBrandTitle(label: s.galleryTitle),
         actions: [
+          PopupMenuButton<GallerySort>(
+            tooltip: s.gallerySortTooltip,
+            enabled: !refreshing,
+            icon: const Icon(Icons.sort),
+            onSelected: gallery.setOrder,
+            itemBuilder: (context) => [
+              CheckedPopupMenuItem(
+                value: GallerySort.desc,
+                checked: gallery.order == GallerySort.desc,
+                child: Text(s.gallerySortNewest),
+              ),
+              CheckedPopupMenuItem(
+                value: GallerySort.asc,
+                checked: gallery.order == GallerySort.asc,
+                child: Text(s.gallerySortOldest),
+              ),
+            ],
+          ),
           IconButton(
             tooltip: s.galleryRefreshTooltip,
             icon: const Icon(Icons.refresh),

@@ -12,6 +12,7 @@ import 'services/backup_service.dart';
 import 'services/gallery_service.dart';
 import 'services/media_access.dart';
 import 'services/settings_service.dart';
+import 'services/storage.dart';
 import 'theme/app_theme.dart';
 import 'theme/theme_mode_controller.dart';
 import 'widgets/main_shell.dart';
@@ -95,6 +96,7 @@ class _AuthenticatedShellState extends State<_AuthenticatedShell>
     final auth = context.read<AuthService>();
     final settings = context.read<SettingsService>();
     final ledger = context.read<BackupLedger>();
+    final prefs = context.read<PrefsStore>();
     _backup = BackupService(
       settings: settings,
       ledger: ledger,
@@ -107,6 +109,7 @@ class _AuthenticatedShellState extends State<_AuthenticatedShell>
       },
     );
     _gallery = GalleryService(
+      prefs: prefs,
       clientProvider: () {
         final client = auth.client;
         if (client == null) throw StateError('Not authenticated');

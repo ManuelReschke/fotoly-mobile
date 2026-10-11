@@ -34,6 +34,7 @@ void main() {
     expect(AppBrand.pixelfox.backupLedgerKey, 'pixelfox_backup_ledger_v1');
     expect(AppBrand.pixelfox.localePrefsKey, 'pixelfox_locale');
     expect(AppBrand.pixelfox.themeModePrefsKey, 'pixelfox_theme_mode');
+    expect(AppBrand.pixelfox.gallerySortPrefsKey, 'pixelfox_gallery_sort');
   });
 
   test('fotoly pack uses its own host, scheme, assets and storage keys', () {
@@ -53,6 +54,7 @@ void main() {
     expect(fotoly.apiKeyStorageKey, 'fotoly_api_key');
     expect(fotoly.backupLedgerKey, 'fotoly_backup_ledger_v1');
     expect(fotoly.localePrefsKey, 'fotoly_locale');
+    expect(fotoly.gallerySortPrefsKey, 'fotoly_gallery_sort');
   });
 
   test('fromId maps flavor names and rejects unknown ids', () {

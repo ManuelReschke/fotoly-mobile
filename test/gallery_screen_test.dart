@@ -149,6 +149,54 @@ void main() {
     expect(find.text('Try again'), findsOneWidget);
   });
 
+  testWidgets('sort menu reloads oldest first', (tester) async {
+    final fake = FakeApiHttp(
+      imagesStatus: 200,
+      imagesBody:
+          '{"items":['
+          '{"image_uuid":"a","stable_url":"https://example/a.jpg"}'
+          '],"has_more":false}',
+    );
+    final gallery = GalleryService(
+      clientProvider: () => PixelfoxApiClient(apiKey: 'k', httpClient: fake),
+    );
+    await pumpGallery(tester, gallery: gallery);
+    expect(find.text('https://example/a.jpg'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Photo order'));
+    await tester.pumpAndSettle();
+    expect(find.text('Newest first'), findsOneWidget);
+    expect(find.text('Oldest first'), findsOneWidget);
+    expect(
+      tester
+          .widget<CheckedPopupMenuItem<GallerySort>>(
+            find.widgetWithText(
+              CheckedPopupMenuItem<GallerySort>,
+              'Newest first',
+            ),
+          )
+          .checked,
+      isTrue,
+    );
+
+    fake.imagesBody =
+        '{"items":[{"image_uuid":"old","stable_url":"https://example/old.jpg"}],"has_more":false}';
+    await tester.tap(
+      find.widgetWithText(CheckedPopupMenuItem<GallerySort>, 'Oldest first'),
+    );
+    await tester.pumpAndSettle();
+
+    final imageUrls = fake.sent
+        .map((request) => request.url)
+        .where((url) => url.path.endsWith('/images'))
+        .map((url) => url.toString())
+        .toList();
+    expect(imageUrls.first, isNot(contains('sort=')));
+    expect(imageUrls.last, contains('sort=asc'));
+    expect(find.text('https://example/a.jpg'), findsNothing);
+    expect(find.text('https://example/old.jpg'), findsOneWidget);
+  });
+
   testWidgets('grid builds a tile per item', (tester) async {
     final gallery = GalleryService(
       clientProvider: () => PixelfoxApiClient(

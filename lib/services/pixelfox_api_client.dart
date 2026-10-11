@@ -416,18 +416,21 @@ class PixelfoxApiClient {
 
   /// Lists account images with optional cursor paging.
   ///
-  /// [albumId] restricts the page to one owned album. Order stays newest first;
-  /// the album's own sort applies on the public album page.
+  /// [albumId] restricts the page to one owned album. Omit [sort] for newest
+  /// first; `asc` is oldest first. The album's own sort applies on the public
+  /// album page.
   Future<PixelfoxImagePage> listImages({
     int limit = 50,
     String? cursor,
     int? albumId,
+    String? sort,
   }) async {
     final uri = Uri.parse('$_apiRoot/images').replace(
       queryParameters: {
         'limit': '$limit',
         if (cursor != null && cursor.isNotEmpty) 'cursor': cursor,
         if (albumId != null) 'album_id': '$albumId',
+        if (sort != null && sort.isNotEmpty) 'sort': sort,
       },
     );
     _log(

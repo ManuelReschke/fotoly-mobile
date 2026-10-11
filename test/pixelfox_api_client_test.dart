@@ -320,6 +320,30 @@ void main() {
       expect(log.first.url, contains('album_id=19'));
     });
 
+    test('adds sort=asc and omits sort when null or empty', () async {
+      final fake = FakeApiHttp(
+        imagesStatus: 200,
+        imagesBody: '{"items":[],"has_more":false}',
+      );
+      final log = <ApiRequestLog>[];
+      final client = PixelfoxApiClient(
+        apiKey: 'k',
+        httpClient: fake,
+        requestLog: log,
+      );
+
+      await client.listImages(sort: 'asc');
+      expect(log.single.url, contains('sort=asc'));
+
+      log.clear();
+      await client.listImages();
+      expect(log.single.url, isNot(contains('sort=')));
+
+      log.clear();
+      await client.listImages(sort: '');
+      expect(log.single.url, isNot(contains('sort=')));
+    });
+
     test('401 throws PixelfoxApiException', () async {
       final fake = FakeApiHttp(
         imagesStatus: 401,

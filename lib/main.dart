@@ -49,6 +49,7 @@ Future<void> main() async {
         ChangeNotifierProvider<SettingsService>.value(value: settings),
         ChangeNotifierProvider<LocaleController>.value(value: locale),
         ChangeNotifierProvider<ThemeModeController>.value(value: themeMode),
+        Provider<PrefsStore>.value(value: prefsStore),
         Provider<BackupLedger>.value(value: ledger),
       ],
       child: const PixelfoxApp(),
