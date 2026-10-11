@@ -5,6 +5,7 @@ import '../l10n/app_strings.dart';
 import '../l10n/l10n_scope.dart';
 import '../models/album_sharing.dart';
 import '../services/pixelfox_api_client.dart';
+import 'sheet_insets.dart';
 
 typedef AlbumMemberInviteCall =
     Future<AlbumMemberInvite> Function({int? userId, String? username});
@@ -203,12 +204,13 @@ class _AlbumMembersBodyState extends State<_AlbumMembersBody> {
   Widget build(BuildContext context) {
     final s = context.l10n;
     final media = MediaQuery.of(context);
-    final height = (media.size.height * 0.85 - media.viewInsets.bottom).clamp(
+    final bottom = sheetBottomInset(context);
+    final height = (media.size.height * 0.85 - bottom).clamp(
       240.0,
       media.size.height,
     );
     return Padding(
-      padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
+      padding: EdgeInsets.only(bottom: bottom),
       child: SizedBox(
         height: height,
         child: Padding(

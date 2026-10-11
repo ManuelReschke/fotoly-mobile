@@ -4,6 +4,7 @@ import '../l10n/app_strings.dart';
 import '../l10n/l10n_scope.dart';
 import '../models/pixelfox_image.dart';
 import 'gallery_image.dart';
+import 'sheet_insets.dart';
 
 typedef AlbumImagePageLoader =
     Future<PixelfoxImagePage> Function({String? cursor});
@@ -132,7 +133,7 @@ class _AddAlbumImagesBodyState extends State<_AddAlbumImagesBody> {
   Widget build(BuildContext context) {
     final s = context.l10n;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      padding: EdgeInsets.fromLTRB(16, 12, 16, 16 + sheetBottomInset(context)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

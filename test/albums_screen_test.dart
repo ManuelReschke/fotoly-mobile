@@ -116,4 +116,28 @@ void main() {
     expect(find.text('Holiday'), findsOneWidget);
     expect(find.text('Album created'), findsOneWidget);
   });
+
+  testWidgets('new album button stays above the system navigation bar', (
+    tester,
+  ) async {
+    const navBar = 48.0;
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(400, 1600);
+    tester.view.viewPadding = const FakeViewPadding(bottom: navBar);
+    tester.view.padding = const FakeViewPadding(bottom: navBar);
+    addTearDown(tester.view.reset);
+
+    final albums = AlbumService(
+      clientProvider: () => PixelfoxApiClient(
+        apiKey: 'k',
+        httpClient: FakeApiHttp(albumsBody: '{"albums":[]}'),
+      ),
+    );
+    await pumpAlbums(tester, albums: albums);
+    await tester.tap(find.byKey(const Key('albums-create')));
+    await tester.pumpAndSettle();
+
+    final button = tester.getRect(find.byKey(const Key('album-save')));
+    expect(1600 - button.bottom, greaterThanOrEqualTo(navBar));
+  });
 }

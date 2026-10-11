@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/l10n_scope.dart';
 import '../models/pixelfox_album.dart';
+import 'sheet_insets.dart';
 
 /// Create or edit album metadata. Returns null when dismissed.
 Future<AlbumInput?> showAlbumEditorSheet({
@@ -95,7 +96,7 @@ class _AlbumEditorBodyState extends State<_AlbumEditorBody> {
   @override
   Widget build(BuildContext context) {
     final s = context.l10n;
-    final bottom = MediaQuery.viewInsetsOf(context).bottom;
+    final bottom = sheetBottomInset(context);
     return Padding(
       padding: EdgeInsets.fromLTRB(20, 12, 20, 16 + bottom),
       child: SingleChildScrollView(

@@ -4,6 +4,7 @@ import '../l10n/album_error_l10n.dart';
 import '../l10n/app_strings.dart';
 import '../l10n/l10n_scope.dart';
 import '../models/album_sharing.dart';
+import 'sheet_insets.dart';
 
 /// Pick the full category set for one album and create private categories.
 ///
@@ -278,7 +279,8 @@ class _AlbumCategoriesBodyState extends State<_AlbumCategoriesBody> {
   Widget build(BuildContext context) {
     final s = context.l10n;
     final media = MediaQuery.of(context);
-    final height = (media.size.height * 0.85 - media.viewInsets.bottom).clamp(
+    final bottom = sheetBottomInset(context);
+    final height = (media.size.height * 0.85 - bottom).clamp(
       280.0,
       media.size.height,
     );
@@ -286,7 +288,7 @@ class _AlbumCategoriesBodyState extends State<_AlbumCategoriesBody> {
         ? _initial.isNotEmpty || _selected.isNotEmpty
         : true;
     return Padding(
-      padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
+      padding: EdgeInsets.only(bottom: bottom),
       child: SizedBox(
         height: height,
         child: Padding(
