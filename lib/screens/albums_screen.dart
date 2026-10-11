@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../config/api_config.dart';
 import '../l10n/album_error_l10n.dart';
 import '../l10n/l10n_scope.dart';
 import '../models/pixelfox_album.dart';
@@ -190,7 +191,7 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
           final visibility = album.isPublic ? s.publicAlbum : s.privateAlbum;
           return ListTile(
             key: ValueKey('album-${album.id}'),
-            leading: const Icon(Icons.photo_album_outlined),
+            leading: _coverLeading(album),
             title: Text(
               album.title,
               maxLines: 1,
@@ -207,6 +208,22 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
           );
         },
       ),
+    );
+  }
+
+  Widget _coverLeading(PixelfoxAlbum album) {
+    final raw = album.coverStableUrl;
+    if (raw == null || raw.isEmpty) {
+      return const Icon(Icons.photo_album_outlined);
+    }
+    final url = ApiConfig.absolute(raw)?.toString() ?? raw;
+    final builder = widget.imageBuilder;
+    final image = builder != null
+        ? builder(url: url, fit: BoxFit.cover)
+        : GalleryImage(url: url, fit: BoxFit.cover);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: SizedBox(width: 56, height: 56, child: image),
     );
   }
 }

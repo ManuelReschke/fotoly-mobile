@@ -12,6 +12,7 @@ class PixelfoxAlbum {
     this.hasSharePassword = false,
     this.imageSortOrder = sortNewest,
     this.coverImageUuid,
+    this.coverStableUrl,
   });
 
   /// Newest images first. Matches the API value `desc`.
@@ -31,8 +32,11 @@ class PixelfoxAlbum {
   final bool hasSharePassword;
   final String imageSortOrder;
 
-  /// Set after PUT /albums/{id}/cover. List responses omit this field.
+  /// UUID of the cover image. Null when the album has no live cover.
   final String? coverImageUuid;
+
+  /// Small stable preview URL of [coverImageUuid]. Null when there is no cover.
+  final String? coverStableUrl;
 
   bool get isOldestFirst => imageSortOrder == sortOldest;
 
@@ -47,6 +51,7 @@ class PixelfoxAlbum {
     bool? hasSharePassword,
     String? imageSortOrder,
     String? coverImageUuid,
+    String? coverStableUrl,
     bool clearCover = false,
   }) {
     return PixelfoxAlbum(
@@ -63,6 +68,9 @@ class PixelfoxAlbum {
       coverImageUuid: clearCover
           ? null
           : (coverImageUuid ?? this.coverImageUuid),
+      coverStableUrl: clearCover
+          ? null
+          : (coverStableUrl ?? this.coverStableUrl),
     );
   }
 
@@ -72,7 +80,8 @@ class PixelfoxAlbum {
       throw const FormatException('PixelfoxAlbum missing id');
     }
     final sort = json['image_sort_order'] as String?;
-    final cover = (json['cover_image_uuid'] as String?)?.trim();
+    final cover = _optionalString(json['cover_image_uuid']);
+    final coverUrl = _optionalString(json['cover_stable_url']);
     return PixelfoxAlbum(
       id: id,
       title: json['title'] as String? ?? '',
@@ -84,9 +93,17 @@ class PixelfoxAlbum {
       viewUrl: json['view_url'] as String? ?? '',
       hasSharePassword: json['has_share_password'] as bool? ?? false,
       imageSortOrder: sort == sortOldest ? sortOldest : sortNewest,
-      coverImageUuid: cover == null || cover.isEmpty ? null : cover,
+      coverImageUuid: cover,
+      coverStableUrl: coverUrl,
     );
   }
+}
+
+String? _optionalString(Object? value) {
+  if (value is! String) return null;
+  final trimmed = value.trim();
+  if (trimmed.isEmpty) return null;
+  return trimmed;
 }
 
 /// Fields sent to POST /albums and PATCH /albums/{id}.

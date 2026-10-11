@@ -68,19 +68,24 @@ void main() {
     expect(service.byId(4)?.imageCount, 5);
   });
 
-  test('update keeps a cover the patch response omits', () async {
+  test('refresh and update use the cover from the response', () async {
     final fake = FakeApiHttp(
       albumsBody:
-          '{"albums":[{"id":4,"title":"Trip","image_count":1,"cover_image_uuid":"cover-1"}]}',
+          '{"albums":[{"id":4,"title":"Trip","image_count":1,"cover_image_uuid":"cover-1","cover_stable_url":"https://example/old.jpg"}]}',
       albumWriteStatus: 200,
-      albumWriteBody: '{"id":4,"title":"Trip 2","image_count":1}',
+      albumWriteBody:
+          '{"id":4,"title":"Trip 2","image_count":1,"cover_image_uuid":"cover-2","cover_stable_url":"https://example/new.jpg"}',
     );
     final service = AlbumService(
       clientProvider: () => PixelfoxApiClient(apiKey: 'k', httpClient: fake),
     );
     await service.refresh();
-    await service.update(4, const AlbumInput(title: 'Trip 2'));
     expect(service.byId(4)?.coverImageUuid, 'cover-1');
+    expect(service.byId(4)?.coverStableUrl, 'https://example/old.jpg');
+
+    await service.update(4, const AlbumInput(title: 'Trip 2'));
+    expect(service.byId(4)?.coverImageUuid, 'cover-2');
+    expect(service.byId(4)?.coverStableUrl, 'https://example/new.jpg');
     expect(service.byId(4)?.title, 'Trip 2');
   });
 }

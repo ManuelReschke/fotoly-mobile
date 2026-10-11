@@ -61,6 +61,41 @@ void main() {
     expect(find.text('New album'), findsWidgets);
   });
 
+  testWidgets('album list shows the cover and the grid marks it', (
+    tester,
+  ) async {
+    final fake = FakeApiHttp(
+      profileBody: File(
+        'test/fixtures/profile_success.json',
+      ).readAsStringSync(),
+      albumsBody:
+          '{"albums":[{"id":7,"title":"Coast","image_count":2,"is_public":true,"view_url":"/a/coast","cover_image_uuid":"pic","cover_stable_url":"https://example/cover.jpg"}]}',
+      imagesBody:
+          '{"items":[{"image_uuid":"pic","stable_url":"https://example/pic.jpg"}],"has_more":false}',
+    );
+    final auth = AuthService(
+      secureStore: MemorySecureStore(),
+      clientFactory: ({apiKey, accessToken}) => PixelfoxApiClient(
+        apiKey: apiKey,
+        accessToken: accessToken,
+        httpClient: fake,
+      ),
+    );
+    await auth.loginWithApiKey('k');
+    final albums = AlbumService(clientProvider: () => auth.client!);
+    final gallery = GalleryService(clientProvider: () => auth.client!);
+    await pumpAlbums(tester, albums: albums, gallery: gallery, auth: auth);
+
+    expect(find.text('https://example/cover.jpg'), findsOneWidget);
+    expect(find.byIcon(Icons.photo_album_outlined), findsNothing);
+
+    await tester.tap(find.text('Coast'));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.star), findsOneWidget);
+    expect(find.text('https://example/pic.jpg'), findsOneWidget);
+  });
+
   testWidgets('lists an album and opens its photos', (tester) async {
     final fake = FakeApiHttp(
       profileBody: File(

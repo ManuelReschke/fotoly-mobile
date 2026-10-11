@@ -72,13 +72,8 @@ class AlbumService extends ChangeNotifier {
 
   Future<PixelfoxAlbum> update(int id, AlbumInput input) async {
     final updated = await _clientProvider().updateAlbum(id, input);
-    final previous = byId(id);
-    _upsert(
-      previous?.coverImageUuid == null
-          ? updated
-          : updated.copyWith(coverImageUuid: previous!.coverImageUuid),
-    );
-    return byId(id) ?? updated;
+    _upsert(updated);
+    return updated;
   }
 
   Future<void> delete(int id) async {
