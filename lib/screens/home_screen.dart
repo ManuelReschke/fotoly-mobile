@@ -176,6 +176,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       pending: backup.pendingImages,
                       securedCount: backup.securedCount,
                       scanning: backup.scanning,
+                      onChooseFolders: !settings.hasFolders && !backup.running
+                          ? () => _openSettingsThenRefresh(backup)
+                          : null,
                     ),
                   ),
                 ),

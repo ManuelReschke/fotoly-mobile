@@ -100,6 +100,26 @@ void main() {
     await pumpL10n(tester, const BackupStatusView(status: BackupStatus.idle));
 
     expect(find.text('Ready when you are'), findsOneWidget);
+    expect(find.byType(InkWell), findsNothing);
+  });
+
+  testWidgets('empty ready card opens folder settings when no folder is set', (
+    tester,
+  ) async {
+    var taps = 0;
+    await pumpL10n(
+      tester,
+      BackupStatusView(
+        status: BackupStatus.idle,
+        onChooseFolders: () => taps++,
+      ),
+    );
+
+    expect(find.text('Add a photo folder to get started'), findsOneWidget);
+    await tester.tap(find.text('Ready when you are'));
+    await tester.pump();
+
+    expect(taps, 1);
   });
 
   testWidgets('storage usage card shows used of quota and free space', (

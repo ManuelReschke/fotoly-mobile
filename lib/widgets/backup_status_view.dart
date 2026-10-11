@@ -23,12 +23,16 @@ class BackupStatusView extends StatelessWidget {
     this.pending = const [],
     this.securedCount = 0,
     this.scanning = false,
+    this.onChooseFolders,
   });
 
   final BackupStatus status;
   final List<LocalImageFile> pending;
   final int securedCount;
   final bool scanning;
+
+  /// When set, the empty "ready" card opens folder settings.
+  final VoidCallback? onChooseFolders;
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +61,7 @@ class BackupStatusView extends StatelessWidget {
           pending: pending,
           securedCount: securedCount,
           scanning: scanning,
+          onChooseFolders: onChooseFolders,
         );
     }
   }
@@ -67,11 +72,13 @@ class _IdleHero extends StatelessWidget {
     required this.pending,
     required this.securedCount,
     required this.scanning,
+    this.onChooseFolders,
   });
 
   final List<LocalImageFile> pending;
   final int securedCount;
   final bool scanning;
+  final VoidCallback? onChooseFolders;
 
   @override
   Widget build(BuildContext context) {
@@ -101,19 +108,23 @@ class _IdleHero extends StatelessWidget {
       return _AllSecuredHero(securedCount: securedCount);
     }
 
-    return const _EmptyReadyHero();
+    return _EmptyReadyHero(onChooseFolders: onChooseFolders);
   }
 }
 
 class _EmptyReadyHero extends StatelessWidget {
-  const _EmptyReadyHero();
+  const _EmptyReadyHero({this.onChooseFolders});
+
+  final VoidCallback? onChooseFolders;
 
   @override
   Widget build(BuildContext context) {
     final s = context.l10n;
     final scheme = Theme.of(context).colorScheme;
+    final onChooseFolders = this.onChooseFolders;
     return _HeroCard(
       gradient: AppTheme.heroIdle(context),
+      onTap: onChooseFolders,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -151,6 +162,21 @@ class _EmptyReadyHero extends StatelessWidget {
             ),
             textAlign: TextAlign.center,
           ),
+          if (onChooseFolders != null) ...[
+            const SizedBox(height: 16),
+            Icon(Icons.settings_outlined, size: 20, color: AppTheme.foxOrange),
+            const SizedBox(height: 6),
+            Text(
+              s.addPhotoFolderHint,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: AppTheme.foxOrange,
+                fontWeight: FontWeight.w700,
+                decoration: TextDecoration.underline,
+                decorationColor: AppTheme.foxOrange,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ],
       ),
     );
@@ -549,32 +575,63 @@ class _FailedHero extends StatelessWidget {
 }
 
 class _HeroCard extends StatelessWidget {
-  const _HeroCard({required this.child, required this.gradient});
+  const _HeroCard({required this.child, required this.gradient, this.onTap});
 
   final Widget child;
   final List<Color> gradient;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: gradient,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
+    final radius = BorderRadius.circular(28);
+    final gradientDecoration = BoxDecoration(
+      borderRadius: radius,
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: gradient,
       ),
+    );
+    final shadow = [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: 0.06),
+        blurRadius: 20,
+        offset: const Offset(0, 10),
+      ),
+    ];
+    final content = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
       child: child,
+    );
+    final onTap = this.onTap;
+    if (onTap == null) {
+      return Container(
+        width: double.infinity,
+        decoration: gradientDecoration.copyWith(boxShadow: shadow),
+        child: content,
+      );
+    }
+
+    // Shadow sits outside the clipped ink splash so the card keeps its lift.
+    return Container(
+      decoration: BoxDecoration(borderRadius: radius, boxShadow: shadow),
+      child: Semantics(
+        button: true,
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: radius,
+          clipBehavior: Clip.antiAlias,
+          child: Ink(
+            width: double.infinity,
+            decoration: gradientDecoration,
+            child: InkWell(
+              onTap: onTap,
+              mouseCursor: SystemMouseCursors.click,
+              child: content,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
