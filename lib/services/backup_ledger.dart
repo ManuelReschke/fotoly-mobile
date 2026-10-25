@@ -58,6 +58,9 @@ class BackupLedger {
   final Map<String, BackedUpEntry> _byFingerprint = {};
   int? _userId;
 
+  /// True when memory has uploads or removals not yet written to prefs.
+  bool _dirty = false;
+
   Map<String, BackedUpEntry> get entries => Map.unmodifiable(_byFingerprint);
 
   int get count => _byFingerprint.length;
@@ -70,6 +73,7 @@ class BackupLedger {
 
   Future<void> load({int? userId}) async {
     _userId = userId;
+    _dirty = false;
     _byFingerprint.clear();
     var raw = await _prefs.getString(backupLedgerKeyForUser(userId));
     if ((raw == null || raw.isEmpty) && userId != null) {
@@ -101,7 +105,15 @@ class BackupLedger {
     }
   }
 
-  Future<void> markUploaded(LocalImageFile file, {String? imageUuid}) async {
+  /// Records [file] as uploaded.
+  ///
+  /// [persist] false updates memory only. Call [flush] to write a batch, so a
+  /// long backup does not re-encode the whole ledger after every photo.
+  Future<void> markUploaded(
+    LocalImageFile file, {
+    String? imageUuid,
+    bool persist = true,
+  }) async {
     final entry = BackedUpEntry(
       path: file.path,
       sizeBytes: file.sizeBytes,
@@ -109,16 +121,31 @@ class BackupLedger {
       uploadedAtMs: DateTime.now().millisecondsSinceEpoch,
     );
     _byFingerprint[entry.fingerprint] = entry;
-    await _persist();
+    _dirty = true;
+    if (persist) await flush();
   }
 
-  Future<void> removeFingerprint(String fingerprint) async {
-    _byFingerprint.remove(fingerprint);
+  /// Drops one entry. [persist] false defers the prefs write to [flush].
+  Future<void> removeFingerprint(
+    String fingerprint, {
+    bool persist = true,
+  }) async {
+    final removed = _byFingerprint.remove(fingerprint) != null;
+    if (!removed && !_dirty) return;
+    if (removed) _dirty = true;
+    if (persist) await flush();
+  }
+
+  /// Writes pending uploads and removals. No-op when nothing changed.
+  Future<void> flush() async {
+    if (!_dirty) return;
     await _persist();
+    _dirty = false;
   }
 
   Future<void> clear() async {
     _byFingerprint.clear();
+    _dirty = false;
     await _prefs.remove(backupLedgerKeyForUser(_userId));
   }
 

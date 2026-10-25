@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/backup_status.dart';
 import '../models/full_sync_result.dart';
+import '../models/upload_result.dart';
 import 'backup_errors.dart';
 import 'backup_ledger.dart';
 import 'file_scanner.dart';
@@ -12,13 +13,16 @@ import 'pixelfox_api_client.dart';
 import 'settings_service.dart';
 
 /// Reads file bytes for upload (injectable).
+///
+/// Production leaves this unset and streams the file from disk. Tests pass a
+/// reader when they do not want a real file.
 typedef FileBytesReader = Future<List<int>> Function(String path);
-
-Future<List<int>> defaultFileBytesReader(String path) =>
-    File(path).readAsBytes();
 
 /// Default interval for background inventory polls while the app is open.
 const Duration kDefaultAutoScanInterval = Duration(seconds: 30);
+
+/// How many ledger changes to keep in memory before rewriting prefs.
+const int kLedgerFlushStride = 25;
 
 /// Skip automatic resume/auto-scan inventory work if a scan finished more
 /// recently than this (avoids long freezes when flicking the app away/back).
@@ -31,11 +35,11 @@ class BackupService extends ChangeNotifier {
     required this._clientProvider,
     required this._ledger,
     FileScanner? scanner,
-    FileBytesReader? readBytes,
+    this.readBytes,
+    this.ledgerFlushStride = kLedgerFlushStride,
     this._autoScanInterval = kDefaultAutoScanInterval,
     this.minAutoInventoryInterval = kMinAutoInventoryInterval,
-  }) : _scanner = scanner ?? IoFileScanner(),
-       _readBytes = readBytes ?? defaultFileBytesReader {
+  }) : _scanner = scanner ?? IoFileScanner() {
     _settings.addListener(_onSettingsChanged);
   }
 
@@ -43,8 +47,12 @@ class BackupService extends ChangeNotifier {
   final PixelfoxApiClient Function() _clientProvider;
   final BackupLedger _ledger;
   final FileScanner _scanner;
-  final FileBytesReader _readBytes;
+  final FileBytesReader? readBytes;
   final Duration _autoScanInterval;
+
+  /// Ledger prefs rewrite after this many uploads or removals, and always when
+  /// a backup or full sync finishes.
+  final int ledgerFlushStride;
 
   /// Minimum gap between quiet/automatic inventory scans.
   final Duration minAutoInventoryInterval;
@@ -83,6 +91,7 @@ class BackupService extends ChangeNotifier {
   /// Coalesced inventory work: concurrent [refreshInventory] callers merge into
   /// one drain loop so folder-change / manual refresh is not dropped mid-scan.
   Future<void>? _activeInventory;
+  int _ledgerOpsSinceFlush = 0;
   bool _inventoryPending = false;
   bool _inventoryPendingQuiet = true;
   bool _inventoryPendingThrottle = true;
@@ -346,8 +355,65 @@ class BackupService extends ChangeNotifier {
     return e.toString();
   }
 
-  String _fingerprintList(List<LocalImageFile> files) =>
-      files.map((f) => '${f.path}:${f.sizeBytes}').join('|');
+  /// Change detection for quiet scans. A full path string for every photo is
+  /// large enough to hitch the UI; a mix of count, path, and size is enough.
+  int _fingerprintList(List<LocalImageFile> files) {
+    var hash = 0x811c9dc5;
+    hash = _mixHash(hash, files.length);
+    for (final file in files) {
+      hash = _mixHash(hash, file.path.hashCode);
+      hash = _mixHash(hash, file.sizeBytes);
+    }
+    return hash;
+  }
+
+  int _mixHash(int hash, int value) {
+    hash ^= value & 0x7fffffff;
+    hash = (hash * 0x01000193) & 0x7fffffff;
+    return hash;
+  }
+
+  Future<void> _noteLedgerChange() async {
+    _ledgerOpsSinceFlush++;
+    if (ledgerFlushStride <= 1 || _ledgerOpsSinceFlush >= ledgerFlushStride) {
+      await _flushLedger();
+    }
+  }
+
+  Future<void> _flushLedger() async {
+    await _ledger.flush();
+    _ledgerOpsSinceFlush = 0;
+  }
+
+  Future<({UploadResult result, LocalImageFile recorded})> _uploadPendingFile(
+    PixelfoxApiClient client,
+    LocalImageFile file,
+    int? albumId,
+  ) async {
+    final reader = readBytes;
+    if (reader != null) {
+      final bytes = await reader(file.path);
+      final result = await client.uploadImageBytes(
+        filename: file.name,
+        bytes: bytes,
+        albumId: albumId,
+      );
+      return (result: result, recorded: file);
+    }
+
+    final ioFile = File(file.path);
+    final length = await ioFile.length();
+    final result = await client.uploadImageStream(
+      filename: file.name,
+      length: length,
+      openRead: () => ioFile.openRead(),
+      albumId: albumId,
+    );
+    final recorded = length == file.sizeBytes
+        ? file
+        : LocalImageFile(path: file.path, name: file.name, sizeBytes: length);
+    return (result: result, recorded: recorded);
+  }
 
   /// Verify ledger entries still exist on Pixelfox; drop missing ones.
   ///
@@ -395,13 +461,15 @@ class BackupService extends ChangeNotifier {
       for (final entry in withUuid) {
         if (!_fullSyncRunning) break;
         final uuid = entry.imageUuid!;
+        var removedOne = false;
         try {
           final exists = await client.imageExists(uuid);
           checked++;
           if (exists) {
             stillPresent++;
           } else {
-            await _ledger.removeFingerprint(entry.fingerprint);
+            await _ledger.removeFingerprint(entry.fingerprint, persist: false);
+            removedOne = true;
             removed++;
           }
         } on PixelfoxApiException catch (e) {
@@ -416,6 +484,7 @@ class BackupService extends ChangeNotifier {
           checked++;
           errors++;
         }
+        if (removedOne) await _noteLedgerChange();
         _fullSyncChecked = checked;
         notifyListeners();
       }
@@ -432,6 +501,7 @@ class BackupService extends ChangeNotifier {
       _fullSyncRunning = false;
       _fullSyncChecked = 0;
       _fullSyncTotal = 0;
+      await _flushLedger();
       await refreshInventory();
       notifyListeners();
     }
@@ -507,18 +577,19 @@ class BackupService extends ChangeNotifier {
         _currentPath = file.path;
         notifyListeners();
 
+        var uploaded = false;
         try {
-          final bytes = await _readBytes(file.path);
           final albumId = _settings.albumIdForFile(file.path);
-          final result = await client.uploadImageBytes(
-            filename: file.name,
-            bytes: bytes,
-            albumId: albumId,
+          final uploadedFile = await _uploadPendingFile(client, file, albumId);
+          // Ledger identity uses path + the size we uploaded, so the next
+          // inventory scan matches and we do not re-upload the same file.
+          await _ledger.markUploaded(
+            uploadedFile.recorded,
+            imageUuid: uploadedFile.result.imageUuid,
+            persist: false,
           );
-          // Ledger identity uses the scanned path+size so the next inventory
-          // scan matches and we do not re-upload the same file.
-          await _ledger.markUploaded(file, imageUuid: result.imageUuid);
           _completed++;
+          uploaded = true;
           // Keep pending list roughly in sync for UI mid-run.
           _pending = _ledger.pendingOf(_allImages);
           _alreadySecured = _ledger.alreadyOf(_allImages);
@@ -526,6 +597,7 @@ class BackupService extends ChangeNotifier {
           _failed++;
           _failedPaths.add(file.path);
         }
+        if (uploaded) await _noteLedgerChange();
         notifyListeners();
       }
     } catch (e) {
@@ -534,6 +606,7 @@ class BackupService extends ChangeNotifier {
       _running = false;
       _currentFileName = null;
       _currentPath = null;
+      await _flushLedger();
       await refreshInventory();
       notifyListeners();
     }

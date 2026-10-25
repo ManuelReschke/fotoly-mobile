@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:fotoly_mobile/models/backup_status.dart';
+import 'package:fotoly_mobile/models/upload_result.dart';
 import 'package:fotoly_mobile/services/backup_errors.dart';
 import 'package:fotoly_mobile/services/backup_ledger.dart';
 import 'package:fotoly_mobile/services/backup_service.dart';
@@ -735,7 +736,256 @@ void main() {
       gate.complete();
       await backupFuture;
     });
+
+    test('full sync persists removals once', () async {
+      final prefs = _CountingPrefs();
+      final settings = SettingsService(prefs: MemoryPrefsStore());
+      await settings.setFolders(['/photos']);
+      final ledger = BackupLedger(prefs: prefs);
+      const a = LocalImageFile(
+        path: '/photos/a.jpg',
+        name: 'a.jpg',
+        sizeBytes: 1,
+      );
+      const b = LocalImageFile(
+        path: '/photos/b.jpg',
+        name: 'b.jpg',
+        sizeBytes: 2,
+      );
+      const c = LocalImageFile(
+        path: '/photos/c.jpg',
+        name: 'c.jpg',
+        sizeBytes: 3,
+      );
+      await ledger.markUploaded(a, imageUuid: 'uuid-a');
+      await ledger.markUploaded(b, imageUuid: 'uuid-b');
+      await ledger.markUploaded(c, imageUuid: 'uuid-c');
+      expect(prefs.writes, 3);
+
+      final backup = buildBackup(
+        settings: settings,
+        scanner: FakeFileScanner([a, b, c]),
+        fake: FakeApiHttp(
+          imageStatusByUuid: {'uuid-a': 404, 'uuid-b': 404, 'uuid-c': 404},
+        ),
+        ledger: ledger,
+      );
+
+      final result = await backup.fullSyncRemote();
+      expect(result.removed, 3);
+      expect(prefs.writes, 4);
+
+      final reloaded = BackupLedger(prefs: prefs.inner);
+      await reloaded.load();
+      expect(reloaded.count, 0);
+    });
   });
+
+  test('backup writes the ledger once for a short run', () async {
+    final prefs = _CountingPrefs();
+    final settings = SettingsService(prefs: MemoryPrefsStore());
+    await settings.setFolders(['/photos']);
+    final files = [
+      for (var i = 0; i < 3; i++)
+        LocalImageFile(path: '/photos/$i.jpg', name: '$i.jpg', sizeBytes: 4),
+    ];
+    final backup = buildBackup(
+      settings: settings,
+      scanner: FakeFileScanner(files),
+      fake: FakeApiHttp(
+        sessionStatus: 200,
+        sessionBody: sessionFixture,
+        uploadStatus: 200,
+        uploadBody: uploadFixture,
+      ),
+      ledger: BackupLedger(prefs: prefs),
+    );
+
+    await backup.startBackup();
+    expect(backup.status.completed, 3);
+    expect(prefs.writes, 1);
+
+    final reloaded = BackupLedger(prefs: prefs.inner);
+    await reloaded.load();
+    expect(reloaded.count, 3);
+  });
+
+  test('backup flushes the ledger every stride and at the end', () async {
+    final prefs = _CountingPrefs();
+    final settings = SettingsService(prefs: MemoryPrefsStore());
+    await settings.setFolders(['/photos']);
+    final files = [
+      for (var i = 0; i < 3; i++)
+        LocalImageFile(path: '/photos/$i.jpg', name: '$i.jpg', sizeBytes: 4),
+    ];
+    final backup = BackupService(
+      settings: settings,
+      scanner: FakeFileScanner(files),
+      ledger: BackupLedger(prefs: prefs),
+      ledgerFlushStride: 2,
+      clientProvider: () => PixelfoxApiClient(
+        apiKey: 'k',
+        httpClient: FakeApiHttp(
+          sessionStatus: 200,
+          sessionBody: sessionFixture,
+          uploadStatus: 200,
+          uploadBody: uploadFixture,
+        ),
+      ),
+      readBytes: (path) async => [1, 2, 3, 4],
+    );
+
+    await backup.startBackup();
+    expect(prefs.writes, 2);
+    backup.dispose();
+  });
+
+  test('backup streams the file and records the size on disk', () async {
+    final root = await Directory.systemTemp.createTemp('fotoly_backup_');
+    addTearDown(() async {
+      if (await root.exists()) await root.delete(recursive: true);
+    });
+    final image = File('${root.path}/a.jpg');
+    await image.writeAsBytes([9, 8, 7, 6, 5]);
+
+    final settings = SettingsService(prefs: MemoryPrefsStore());
+    await settings.setFolders([root.path]);
+    final prefs = MemoryPrefsStore();
+    final ledger = BackupLedger(prefs: prefs);
+    final fake = FakeApiHttp(
+      sessionStatus: 200,
+      sessionBody: sessionFixture,
+      uploadStatus: 200,
+      uploadBody: uploadFixture,
+    );
+    final client = _RecordingClient(fake);
+    final backup = BackupService(
+      settings: settings,
+      scanner: FakeFileScanner([
+        LocalImageFile(path: image.path, name: 'a.jpg', sizeBytes: 4),
+      ]),
+      ledger: ledger,
+      clientProvider: () => client,
+    );
+
+    final status = await backup.startBackup();
+    expect(status.completed, 1);
+    expect(client.streamUploads, 1);
+    expect(client.byteUploads, 0);
+    expect(
+      fake.sent.whereType<http.MultipartRequest>().single.files.single.length,
+      5,
+    );
+
+    final onDisk = LocalImageFile(
+      path: image.path,
+      name: 'a.jpg',
+      sizeBytes: 5,
+    );
+    expect(ledger.isBackedUp(onDisk), isTrue);
+    final reloaded = BackupLedger(prefs: prefs);
+    await reloaded.load();
+    expect(reloaded.isBackedUp(onDisk), isTrue);
+    backup.dispose();
+  });
+
+  test('quiet rescan stays silent until a file size changes', () async {
+    final settings = SettingsService(prefs: MemoryPrefsStore());
+    await settings.setFolders(['/photos']);
+    final files = <LocalImageFile>[
+      const LocalImageFile(path: '/photos/1.jpg', name: '1.jpg', sizeBytes: 4),
+    ];
+    final backup = BackupService(
+      settings: settings,
+      scanner: _MutableScanner(files),
+      ledger: BackupLedger(prefs: MemoryPrefsStore()),
+      clientProvider: () => throw StateError('no upload'),
+      readBytes: (path) async => [1],
+    );
+    var notifies = 0;
+    backup.addListener(() => notifies++);
+
+    await backup.refreshInventory(quiet: true);
+    final afterFirst = notifies;
+    expect(backup.pendingCount, 1);
+
+    await backup.refreshInventory(quiet: true, throttle: false);
+    expect(notifies, afterFirst);
+
+    files[0] = const LocalImageFile(
+      path: '/photos/1.jpg',
+      name: '1.jpg',
+      sizeBytes: 9,
+    );
+    await backup.refreshInventory(quiet: true, throttle: false);
+    expect(backup.pendingImages.single.sizeBytes, 9);
+    expect(notifies, greaterThan(afterFirst));
+    backup.dispose();
+  });
+}
+
+class _CountingPrefs implements PrefsStore {
+  final MemoryPrefsStore inner = MemoryPrefsStore();
+  int writes = 0;
+
+  @override
+  Future<String?> getString(String key) => inner.getString(key);
+
+  @override
+  Future<void> setString(String key, String value) async {
+    writes++;
+    await inner.setString(key, value);
+  }
+
+  @override
+  Future<void> remove(String key) => inner.remove(key);
+}
+
+class _RecordingClient extends PixelfoxApiClient {
+  _RecordingClient(FakeApiHttp fake) : super(apiKey: 'k', httpClient: fake);
+
+  int streamUploads = 0;
+  int byteUploads = 0;
+
+  @override
+  Future<UploadResult> uploadImageStream({
+    required String filename,
+    required int length,
+    required Stream<List<int>> Function() openRead,
+    bool originalOnly = true,
+    int? albumId,
+    bool? isNsfw,
+    String fieldName = 'file',
+  }) async {
+    streamUploads++;
+    return super.uploadImageStream(
+      filename: filename,
+      length: length,
+      openRead: openRead,
+      originalOnly: originalOnly,
+      albumId: albumId,
+      isNsfw: isNsfw,
+      fieldName: fieldName,
+    );
+  }
+
+  @override
+  Future<UploadResult> uploadImageBytes({
+    required String filename,
+    required List<int> bytes,
+    bool originalOnly = true,
+    int? albumId,
+    bool? isNsfw,
+  }) async {
+    byteUploads++;
+    return super.uploadImageBytes(
+      filename: filename,
+      bytes: bytes,
+      originalOnly: originalOnly,
+      albumId: albumId,
+      isNsfw: isNsfw,
+    );
+  }
 }
 
 class _MutableScanner implements FileScanner {

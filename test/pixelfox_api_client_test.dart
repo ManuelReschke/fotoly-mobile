@@ -267,6 +267,51 @@ void main() {
         expect(multipart.files.single.length, bytes.length);
       },
     );
+
+    test(
+      'uploadImageStream sends file bytes without a buffered list',
+      () async {
+        final fake = FakeApiHttp(
+          sessionStatus: 200,
+          sessionBody: sessionFixture,
+          uploadStatus: 200,
+          uploadBody: uploadFixture,
+        );
+        final log = <ApiRequestLog>[];
+        final client = PixelfoxApiClient(
+          apiKey: 'k',
+          httpClient: fake,
+          requestLog: log,
+        );
+        final chunks = [
+          [1, 2, 3],
+          [4, 5],
+        ];
+
+        await client.uploadImageStream(
+          filename: 'holiday.jpg',
+          length: 5,
+          openRead: () => Stream.fromIterable(chunks),
+          albumId: 19,
+        );
+
+        final sessionLog = log.firstWhere((e) => e.jsonBody != null);
+        expect(sessionLog.jsonBody!['album_id'], 19);
+        expect(sessionLog.jsonBody!['file_size'], 5);
+        expect(sessionLog.jsonBody!['processing'], {
+          'profile': 'original_only',
+        });
+
+        final multipart = fake.sent.whereType<http.MultipartRequest>().single;
+        expect(multipart.files.single.filename, 'holiday.jpg');
+        expect(multipart.files.single.length, 5);
+        final sent = await multipart.files.single.finalize().fold<List<int>>(
+          <int>[],
+          (collected, chunk) => collected..addAll(chunk),
+        );
+        expect(sent, [1, 2, 3, 4, 5]);
+      },
+    );
   });
 
   group('PixelfoxApiClient.listImages', () {

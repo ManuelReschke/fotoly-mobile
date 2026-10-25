@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
@@ -503,8 +504,52 @@ class PixelfoxApiClient {
     required String filename,
     required List<int> bytes,
     String fieldName = 'file',
+  }) {
+    return _sendMultipart(
+      session: session,
+      filename: filename,
+      length: bytes.length,
+      file: http.MultipartFile.fromBytes(fieldName, bytes, filename: filename),
+    );
+  }
+
+  /// Session + multipart. [openRead] is subscribed only while the body is sent,
+  /// so the image does not have to sit in a [List] first.
+  Future<UploadResult> uploadImageStream({
+    required String filename,
+    required int length,
+    required Stream<List<int>> Function() openRead,
+    bool originalOnly = true,
+    int? albumId,
+    bool? isNsfw,
+    String fieldName = 'file',
   }) async {
-    if (session.maxBytes > 0 && bytes.length > session.maxBytes) {
+    final session = await createUploadSession(
+      fileSize: length,
+      originalOnly: originalOnly,
+      albumId: albumId,
+      isNsfw: isNsfw,
+    );
+    return _sendMultipart(
+      session: session,
+      filename: filename,
+      length: length,
+      file: http.MultipartFile(
+        fieldName,
+        openRead(),
+        length,
+        filename: filename,
+      ),
+    );
+  }
+
+  Future<UploadResult> _sendMultipart({
+    required UploadSession session,
+    required String filename,
+    required int length,
+    required http.MultipartFile file,
+  }) async {
+    if (session.maxBytes > 0 && length > session.maxBytes) {
       throw PixelfoxApiException(
         'File exceeds session max_bytes (${session.maxBytes})',
       );
@@ -514,9 +559,7 @@ class PixelfoxApiClient {
     final request = http.MultipartRequest('POST', uri);
     request.headers['Authorization'] = 'Bearer ${session.token}';
     request.headers['Accept'] = 'application/json';
-    request.files.add(
-      http.MultipartFile.fromBytes(fieldName, bytes, filename: filename),
-    );
+    request.files.add(file);
 
     _log(
       ApiRequestLog(
@@ -524,7 +567,7 @@ class PixelfoxApiClient {
         url: uri.toString(),
         headers: Map<String, String>.from(request.headers),
         multipartFilename: filename,
-        multipartByteLength: bytes.length,
+        multipartByteLength: length,
       ),
     );
 

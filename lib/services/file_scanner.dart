@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:path/path.dart' as p;
 
@@ -57,55 +58,81 @@ class IoFileScanner implements FileScanner {
   Future<List<LocalImageFile>> scan(
     List<String> folders, {
     bool recursive = true,
-  }) async {
-    final results = <LocalImageFile>[];
-    final seen = <String>{};
-
-    final inaccessible = <String>[];
-
-    for (final folder in folders) {
-      final dir = Directory(folder);
-      try {
-        if (!await dir.exists()) {
-          inaccessible.add(folder);
-          continue;
-        }
-
-        final stream = recursive
-            ? dir.list(recursive: true, followLinks: false)
-            : dir.list();
-
-        await for (final entity in stream) {
-          if (entity is! File) continue;
-          final path = entity.path;
-          final ext = p.extension(path).toLowerCase();
-          if (!kImageExtensions.contains(ext)) continue;
-          if (!seen.add(path)) continue;
-          final stat = await entity.stat();
-          results.add(
-            LocalImageFile(
-              path: path,
-              name: p.basename(path),
-              sizeBytes: stat.size,
-            ),
-          );
-        }
-      } on FileSystemException {
-        // Permission denied or path unreadable — do not abort other folders.
-        inaccessible.add(folder);
-      }
-    }
-
-    // Empty inventory + any inaccessible folder looks like "no photos" if we
-    // stay silent — surface a typed error for the UI to localize.
-    // Partial success (some images found) still returns results.
-    if (results.isEmpty && folders.isNotEmpty && inaccessible.isNotEmpty) {
-      throw FoldersInaccessibleException(List.unmodifiable(inaccessible));
-    }
-
-    results.sort((a, b) => a.path.compareTo(b.path));
-    return results;
+  }) {
+    return _scanFoldersOffUi(List<String>.of(folders), recursive);
   }
+}
+
+typedef _FolderScan = ({
+  List<String> paths,
+  List<int> sizes,
+  List<String> inaccessible,
+});
+
+/// Walks [folders] on a background isolate so a large library does not freeze
+/// the UI. Only primitive lists cross the isolate boundary.
+Future<List<LocalImageFile>> _scanFoldersOffUi(
+  List<String> folders,
+  bool recursive,
+) async {
+  if (folders.isEmpty) return [];
+  final scanned = await Isolate.run(
+    () => _scanImageFolders(folders, recursive),
+  );
+  if (scanned.paths.isEmpty && scanned.inaccessible.isNotEmpty) {
+    throw FoldersInaccessibleException(List.unmodifiable(scanned.inaccessible));
+  }
+  return [
+    for (var i = 0; i < scanned.paths.length; i++)
+      LocalImageFile(
+        path: scanned.paths[i],
+        name: p.basename(scanned.paths[i]),
+        sizeBytes: scanned.sizes[i],
+      ),
+  ];
+}
+
+Future<_FolderScan> _scanImageFolders(
+  List<String> folders,
+  bool recursive,
+) async {
+  final found = <(String, int)>[];
+  final inaccessible = <String>[];
+  final seen = <String>{};
+
+  for (final folder in folders) {
+    final dir = Directory(folder);
+    try {
+      if (!await dir.exists()) {
+        inaccessible.add(folder);
+        continue;
+      }
+
+      final stream = recursive
+          ? dir.list(recursive: true, followLinks: false)
+          : dir.list();
+
+      await for (final entity in stream) {
+        if (entity is! File) continue;
+        final path = entity.path;
+        final ext = p.extension(path).toLowerCase();
+        if (!kImageExtensions.contains(ext)) continue;
+        if (!seen.add(path)) continue;
+        final stat = await entity.stat();
+        found.add((path, stat.size));
+      }
+    } on FileSystemException {
+      // Permission denied or path unreadable — do not abort other folders.
+      inaccessible.add(folder);
+    }
+  }
+
+  found.sort((a, b) => a.$1.compareTo(b.$1));
+  return (
+    paths: [for (final file in found) file.$1],
+    sizes: [for (final file in found) file.$2],
+    inaccessible: inaccessible,
+  );
 }
 
 /// Test double: returns a fixed list filtered by selected folders.
