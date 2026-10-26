@@ -1,4 +1,8 @@
+import 'dart:async';
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:provider/provider.dart';
 
 import '../l10n/l10n_scope.dart';
@@ -7,6 +11,45 @@ import '../services/gallery_service.dart';
 import '../widgets/gallery_image.dart';
 import '../widgets/gallery_zoom.dart';
 
+/// Decode width for a fitted photo that stays sharp through a 2× pinch.
+///
+/// Only the width is capped. The height follows the photo, so the bitmap
+/// keeps its aspect ratio.
+int galleryViewerCacheEdge({
+  required double viewportWidth,
+  required double devicePixelRatio,
+}) {
+  if (viewportWidth <= 0 || devicePixelRatio <= 0) return 1;
+  final edge = (viewportWidth * devicePixelRatio * 2).round();
+  return edge < 1 ? 1 : edge;
+}
+
+/// Indexes of the next two photos after [index].
+List<int> galleryViewerPrefetchIndexes({
+  required int index,
+  required int length,
+}) {
+  if (length <= 0 || index < 0) return const [];
+  final indexes = <int>[];
+  if (index + 1 < length) indexes.add(index + 1);
+  if (index + 2 < length) indexes.add(index + 2);
+  return indexes;
+}
+
+/// Original file decoded at [cacheEdge]. Matches the fullscreen [GalleryImage].
+ImageProvider<Object> galleryViewerImageProvider({
+  required String url,
+  required int cacheEdge,
+  BaseCacheManager? cacheManager,
+}) {
+  return ResizeImage(
+    CachedNetworkImageProvider(url, cacheManager: cacheManager),
+    width: cacheEdge,
+  );
+}
+
+typedef GalleryViewerPrecache = void Function(String url, int cacheEdge);
+
 class GalleryViewer extends StatefulWidget {
   const GalleryViewer({
     super.key,
@@ -14,12 +57,14 @@ class GalleryViewer extends StatefulWidget {
     this.imageBuilder,
     this.onSetCover,
     this.onRemove,
+    this.onPrecache,
   });
 
   final int initialIndex;
   final GalleryImageBuilder? imageBuilder;
   final ValueChanged<PixelfoxImage>? onSetCover;
   final ValueChanged<PixelfoxImage>? onRemove;
+  final GalleryViewerPrecache? onPrecache;
 
   @override
   State<GalleryViewer> createState() => _GalleryViewerState();
@@ -29,6 +74,9 @@ class _GalleryViewerState extends State<GalleryViewer> {
   late final PageController _controller;
   late int _index;
   bool _zoomLocksPaging = false;
+  int? _prefetchedIndex;
+  int? _prefetchedLength;
+  int? _prefetchedEdge;
 
   void _setZoomLock(bool locked) {
     if (!mounted || locked == _zoomLocksPaging) return;
@@ -52,6 +100,45 @@ class _GalleryViewerState extends State<GalleryViewer> {
     if (action == null || items.isEmpty) return;
     final index = _index.clamp(0, items.length - 1);
     action(items[index]);
+  }
+
+  void _schedulePrefetch(int length, int cacheEdge) {
+    if (_prefetchedIndex == _index &&
+        _prefetchedLength == length &&
+        _prefetchedEdge == cacheEdge) {
+      return;
+    }
+    _prefetchedIndex = _index;
+    _prefetchedLength = length;
+    _prefetchedEdge = cacheEdge;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _precacheAhead());
+  }
+
+  void _precacheAhead() {
+    if (!mounted) return;
+    final callback = widget.onPrecache;
+    if (callback == null && widget.imageBuilder != null) return;
+    final items = context.read<GalleryService>().items;
+    final edge = galleryViewerCacheEdge(
+      viewportWidth: MediaQuery.sizeOf(context).width,
+      devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
+    );
+    for (final index in galleryViewerPrefetchIndexes(
+      index: _index,
+      length: items.length,
+    )) {
+      final url = items[index].stableUrl;
+      if (callback != null) {
+        callback(url, edge);
+        continue;
+      }
+      final provider = galleryViewerImageProvider(
+        url: url,
+        cacheEdge: edge,
+        cacheManager: galleryCacheManager(),
+      );
+      unawaited(precacheImage(provider, context, onError: (_, _) {}));
+    }
   }
 
   /// Backup success can [GalleryService.refresh] and replace [GalleryService.items]
@@ -88,6 +175,12 @@ class _GalleryViewerState extends State<GalleryViewer> {
     if (items.isEmpty || pagePastEnd) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _syncPageToItems());
     }
+
+    final cacheEdge = galleryViewerCacheEdge(
+      viewportWidth: MediaQuery.sizeOf(context).width,
+      devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
+    );
+    _schedulePrefetch(items.length, cacheEdge);
 
     final showActions = widget.onSetCover != null || widget.onRemove != null;
 
@@ -141,10 +234,16 @@ class _GalleryViewerState extends State<GalleryViewer> {
           }
           final item = items[index];
           final image = builder != null
-              ? builder(url: item.stableUrl, fit: BoxFit.contain)
+              ? builder(
+                  url: item.stableUrl,
+                  fit: BoxFit.contain,
+                  memCacheWidth: cacheEdge,
+                )
               : GalleryImage(
                   url: item.stableUrl,
                   fit: BoxFit.contain,
+                  memCacheWidth: cacheEdge,
+                  preview: false,
                   errorLabel: s.galleryImageLoadError,
                 );
           return GestureDetector(
