@@ -190,6 +190,15 @@ abstract class AppStrings {
   String get lookingForPhotos;
   String get readyWhenYouAre;
   String get readyBody;
+
+  /// One-tap action that adds the device camera folder.
+  String get secureOwnMedia;
+
+  /// Secondary empty-state action that opens folder settings.
+  String get chooseAnotherFolder;
+
+  /// Shown when the standard camera directory is not on this device.
+  String get cameraFolderNotFound;
   String photosNotYetSecured(int count);
   String onePhotoNotYetSecured();
   String alreadySafeOnPixelfox(int securedCount);

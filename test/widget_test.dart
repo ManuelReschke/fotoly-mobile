@@ -103,23 +103,48 @@ void main() {
     expect(find.byType(InkWell), findsNothing);
   });
 
-  testWidgets('empty ready card opens folder settings when no folder is set', (
+  testWidgets('empty ready card secures the camera folder or opens settings', (
     tester,
   ) async {
-    var taps = 0;
+    var cameraTaps = 0;
+    var folderTaps = 0;
     await pumpL10n(
       tester,
       BackupStatusView(
         status: BackupStatus.idle,
-        onChooseFolders: () => taps++,
+        onSecureCamera: () => cameraTaps++,
+        onChooseFolders: () => folderTaps++,
       ),
     );
 
-    expect(find.text('Add a photo folder to get started'), findsOneWidget);
+    expect(find.text('Back up your photos & videos'), findsOneWidget);
+    expect(find.text('Choose another folder'), findsOneWidget);
+    expect(find.text('Add a photo folder to get started'), findsNothing);
+
     await tester.tap(find.text('Ready when you are'));
     await tester.pump();
+    expect(cameraTaps, 0);
+    expect(folderTaps, 0);
 
-    expect(taps, 1);
+    await tester.tap(find.text('Back up your photos & videos'));
+    await tester.pump();
+    expect(cameraTaps, 1);
+
+    await tester.tap(find.text('Choose another folder'));
+    await tester.pump();
+    expect(folderTaps, 1);
+  });
+
+  testWidgets('German empty state names the camera backup button', (
+    tester,
+  ) async {
+    await pumpL10n(
+      tester,
+      locale: AppLocale.de,
+      BackupStatusView(status: BackupStatus.idle, onSecureCamera: () {}),
+    );
+
+    expect(find.text('Eigene Fotos & Videos sichern'), findsOneWidget);
   });
 
   testWidgets('storage usage card shows used of quota and free space', (

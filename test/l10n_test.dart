@@ -9,6 +9,10 @@ void main() {
     expect(AppLocale.fromCode(null), AppLocale.de);
     expect(AppLocale.fromCode('de').strings, isA<AppStringsDe>());
     expect(const AppStringsDe().startBackup, 'Backup starten');
+    expect(
+      const AppStringsDe().secureOwnMedia,
+      'Eigene Fotos & Videos sichern',
+    );
     expect(const AppStringsDe().allSecuredButton, 'Alles gesichert');
   });
 

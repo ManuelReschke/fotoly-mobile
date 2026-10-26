@@ -23,6 +23,8 @@ class BackupStatusView extends StatelessWidget {
     this.pending = const [],
     this.securedCount = 0,
     this.scanning = false,
+    this.onSecureCamera,
+    this.securingCamera = false,
     this.onChooseFolders,
   });
 
@@ -31,7 +33,13 @@ class BackupStatusView extends StatelessWidget {
   final int securedCount;
   final bool scanning;
 
-  /// When set, the empty "ready" card opens folder settings.
+  /// When set, the empty state offers the standard camera folder.
+  final VoidCallback? onSecureCamera;
+
+  /// True while the camera folder is being added.
+  final bool securingCamera;
+
+  /// When set, the empty state can open folder settings for another path.
   final VoidCallback? onChooseFolders;
 
   @override
@@ -61,6 +69,8 @@ class BackupStatusView extends StatelessWidget {
           pending: pending,
           securedCount: securedCount,
           scanning: scanning,
+          onSecureCamera: onSecureCamera,
+          securingCamera: securingCamera,
           onChooseFolders: onChooseFolders,
         );
     }
@@ -72,12 +82,16 @@ class _IdleHero extends StatelessWidget {
     required this.pending,
     required this.securedCount,
     required this.scanning,
+    this.onSecureCamera,
+    this.securingCamera = false,
     this.onChooseFolders,
   });
 
   final List<LocalImageFile> pending;
   final int securedCount;
   final bool scanning;
+  final VoidCallback? onSecureCamera;
+  final bool securingCamera;
   final VoidCallback? onChooseFolders;
 
   @override
@@ -108,23 +122,33 @@ class _IdleHero extends StatelessWidget {
       return _AllSecuredHero(securedCount: securedCount);
     }
 
-    return _EmptyReadyHero(onChooseFolders: onChooseFolders);
+    return _EmptyReadyHero(
+      onSecureCamera: onSecureCamera,
+      securingCamera: securingCamera,
+      onChooseFolders: onChooseFolders,
+    );
   }
 }
 
 class _EmptyReadyHero extends StatelessWidget {
-  const _EmptyReadyHero({this.onChooseFolders});
+  const _EmptyReadyHero({
+    this.onSecureCamera,
+    this.securingCamera = false,
+    this.onChooseFolders,
+  });
 
+  final VoidCallback? onSecureCamera;
+  final bool securingCamera;
   final VoidCallback? onChooseFolders;
 
   @override
   Widget build(BuildContext context) {
     final s = context.l10n;
     final scheme = Theme.of(context).colorScheme;
+    final onSecureCamera = this.onSecureCamera;
     final onChooseFolders = this.onChooseFolders;
     return _HeroCard(
       gradient: AppTheme.heroIdle(context),
-      onTap: onChooseFolders,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -162,19 +186,61 @@ class _EmptyReadyHero extends StatelessWidget {
             ),
             textAlign: TextAlign.center,
           ),
-          if (onChooseFolders != null) ...[
-            const SizedBox(height: 16),
-            Icon(Icons.settings_outlined, size: 20, color: AppTheme.foxOrange),
-            const SizedBox(height: 6),
-            Text(
-              s.addPhotoFolderHint,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: AppTheme.foxOrange,
-                fontWeight: FontWeight.w700,
-                decoration: TextDecoration.underline,
-                decorationColor: AppTheme.foxOrange,
+          if (onSecureCamera != null) ...[
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppTheme.foxOrange,
+                  foregroundColor: Colors.white,
+                  disabledBackgroundColor: AppTheme.foxOrange.withValues(
+                    alpha: 0.7,
+                  ),
+                  disabledForegroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(56),
+                  textStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                onPressed: securingCamera ? null : onSecureCamera,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (securingCamera)
+                      const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    else
+                      const Icon(Icons.photo_camera_outlined, size: 24),
+                    const SizedBox(width: 10),
+                    Flexible(
+                      child: Text(
+                        s.secureOwnMedia,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              textAlign: TextAlign.center,
+            ),
+          ],
+          if (onChooseFolders != null) ...[
+            const SizedBox(height: 4),
+            TextButton(
+              onPressed: securingCamera ? null : onChooseFolders,
+              child: Text(s.chooseAnotherFolder),
             ),
           ],
         ],
@@ -575,62 +641,33 @@ class _FailedHero extends StatelessWidget {
 }
 
 class _HeroCard extends StatelessWidget {
-  const _HeroCard({required this.child, required this.gradient, this.onTap});
+  const _HeroCard({required this.child, required this.gradient});
 
   final Widget child;
   final List<Color> gradient;
-  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final radius = BorderRadius.circular(28);
-    final gradientDecoration = BoxDecoration(
-      borderRadius: radius,
-      gradient: LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: gradient,
-      ),
-    );
-    final shadow = [
-      BoxShadow(
-        color: Colors.black.withValues(alpha: 0.06),
-        blurRadius: 20,
-        offset: const Offset(0, 10),
-      ),
-    ];
-    final content = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-      child: child,
-    );
-    final onTap = this.onTap;
-    if (onTap == null) {
-      return Container(
-        width: double.infinity,
-        decoration: gradientDecoration.copyWith(boxShadow: shadow),
-        child: content,
-      );
-    }
-
-    // Shadow sits outside the clipped ink splash so the card keeps its lift.
     return Container(
-      decoration: BoxDecoration(borderRadius: radius, boxShadow: shadow),
-      child: Semantics(
-        button: true,
-        child: Material(
-          color: Colors.transparent,
-          borderRadius: radius,
-          clipBehavior: Clip.antiAlias,
-          child: Ink(
-            width: double.infinity,
-            decoration: gradientDecoration,
-            child: InkWell(
-              onTap: onTap,
-              mouseCursor: SystemMouseCursors.click,
-              child: content,
-            ),
-          ),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: gradient,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        child: child,
       ),
     );
   }

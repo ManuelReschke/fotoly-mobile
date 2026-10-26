@@ -558,8 +558,18 @@ class AppStringsDe extends AppStrings {
 
   @override
   String get readyBody =>
-      'Wähle Ordner in den Einstellungen und starte ein Backup.\n'
+      'Sichere den Kamera-Ordner mit einem Tipp.\n'
       'Deine Fotos landen sicher im Fuchsbau.';
+
+  @override
+  String get secureOwnMedia => 'Eigene Fotos & Videos sichern';
+
+  @override
+  String get chooseAnotherFolder => 'Anderen Ordner wählen';
+
+  @override
+  String get cameraFolderNotFound =>
+      'Der Kamera-Ordner ist auf diesem Gerät nicht vorhanden.';
 
   @override
   String photosNotYetSecured(int count) => '$count Fotos noch nicht gesichert';

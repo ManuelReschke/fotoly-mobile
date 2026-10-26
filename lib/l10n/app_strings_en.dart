@@ -544,8 +544,17 @@ class AppStringsEn extends AppStrings {
 
   @override
   String get readyBody =>
-      'Pick folders in Settings, then start a backup.\n'
+      'Secure the camera folder in one tap.\n'
       'Your photos will hop safely into the fox den.';
+
+  @override
+  String get secureOwnMedia => 'Back up your photos & videos';
+
+  @override
+  String get chooseAnotherFolder => 'Choose another folder';
+
+  @override
+  String get cameraFolderNotFound => 'The camera folder is not on this device.';
 
   @override
   String photosNotYetSecured(int count) => '$count photos not yet secured';

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -6,6 +7,7 @@ import '../l10n/l10n_scope.dart';
 import '../models/backup_status.dart';
 import '../services/auth_service.dart';
 import '../services/backup_service.dart';
+import '../services/camera_folder.dart';
 import '../services/media_access_ui.dart';
 import '../services/settings_service.dart';
 import '../theme/app_theme.dart';
@@ -22,6 +24,43 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  bool _addingCameraFolder = false;
+
+  Future<void> _addStandardCameraFolder(BackupService backup) async {
+    if (_addingCameraFolder || backup.running) return;
+    final s = context.l10nRead;
+    if (kIsWeb) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(s.folderPickerUnavailable)));
+      return;
+    }
+
+    setState(() => _addingCameraFolder = true);
+    try {
+      final allowed = await ensureMediaAccessOrSnack(context, strings: s);
+      if (!mounted || !allowed) return;
+
+      final path = locateStandardCameraFolder();
+      if (!mounted) return;
+      if (path == null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(s.cameraFolderNotFound)));
+        return;
+      }
+
+      await context.read<SettingsService>().addFolder(path);
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(s.addedFolder(path))));
+      await backup.refreshInventory();
+    } finally {
+      if (mounted) setState(() => _addingCameraFolder = false);
+    }
+  }
+
   Future<void> _onBackupPressed(
     BackupService backup,
     SettingsService settings,
@@ -176,6 +215,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       pending: backup.pendingImages,
                       securedCount: backup.securedCount,
                       scanning: backup.scanning,
+                      onSecureCamera: !settings.hasFolders && !backup.running
+                          ? () => _addStandardCameraFolder(backup)
+                          : null,
+                      securingCamera: _addingCameraFolder,
                       onChooseFolders: !settings.hasFolders && !backup.running
                           ? () => _openSettingsThenRefresh(backup)
                           : null,
@@ -183,80 +226,73 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              if (!settings.hasFolders)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Text(
-                    s.tipPickFolders,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Expanded(
-                    child: SizedBox(
-                      height: 56,
-                      child: FilledButton.icon(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: allSecured
-                              ? AppTheme.storageLow
-                              : AppTheme.foxOrange,
-                          foregroundColor: Colors.white,
-                          disabledBackgroundColor: allSecured
-                              ? AppTheme.storageLow.withValues(alpha: 0.85)
-                              : null,
-                          disabledForegroundColor: Colors.white,
-                          textStyle: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
+              if (settings.hasFolders) ...[
+                const SizedBox(height: 16),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 56,
+                        child: FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: allSecured
+                                ? AppTheme.storageLow
+                                : AppTheme.foxOrange,
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor: allSecured
+                                ? AppTheme.storageLow.withValues(alpha: 0.85)
+                                : null,
+                            disabledForegroundColor: Colors.white,
+                            textStyle: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
                           ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                          onPressed: backup.running
+                              ? null
+                              : () => _onBackupPressed(backup, settings),
+                          icon: Icon(
+                            backup.running
+                                ? Icons.hourglass_top
+                                : allSecured
+                                ? Icons.verified_outlined
+                                : Icons.backup_outlined,
+                            size: 26,
                           ),
-                        ),
-                        onPressed: backup.running
-                            ? null
-                            : () => _onBackupPressed(backup, settings),
-                        icon: Icon(
-                          backup.running
-                              ? Icons.hourglass_top
-                              : allSecured
-                              ? Icons.verified_outlined
-                              : Icons.backup_outlined,
-                          size: 26,
-                        ),
-                        label: Text(
-                          backup.running
-                              ? s.backingUp
-                              : hasPending
-                              ? s.secureNewCount(backup.pendingCount)
-                              : allSecured
-                              ? s.allSecuredButton
-                              : s.startBackup,
+                          label: Text(
+                            backup.running
+                                ? s.backingUp
+                                : hasPending
+                                ? s.secureNewCount(backup.pendingCount)
+                                : allSecured
+                                ? s.allSecuredButton
+                                : s.startBackup,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  if (status.isSuccess || status.phase.name == 'failed') ...[
-                    const SizedBox(width: 12),
-                    SizedBox(
-                      height: 56,
-                      child: OutlinedButton(
-                        onPressed: backup.running ? null : backup.resetIdle,
-                        style: OutlinedButton.styleFrom(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                    if (status.isSuccess || status.phase.name == 'failed') ...[
+                      const SizedBox(width: 12),
+                      SizedBox(
+                        height: 56,
+                        child: OutlinedButton(
+                          onPressed: backup.running ? null : backup.resetIdle,
+                          style: OutlinedButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
                           ),
+                          child: Text(s.reset),
                         ),
-                        child: Text(s.reset),
                       ),
-                    ),
+                    ],
                   ],
-                ],
-              ),
+                ),
+              ],
             ],
           ),
         ),
