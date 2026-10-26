@@ -165,6 +165,42 @@ abstract class AppStrings {
   String checkEmailBody(String email);
   String get backToLogin;
 
+  // —— Errors (API copy and client checks) ——
+  String get enterEmailPassword;
+  String get enterUsernameEmailPassword;
+  String get enterApiKey;
+  String get invalidCredentials;
+  String get loginFailed;
+  String get loginDisabled;
+  String get registrationFailed;
+  String get registrationDisabled;
+  String get emailAlreadyRegistered;
+  String get passwordTooShort;
+  String get usernameTooShort;
+  String get invalidEmail;
+  String get invalidRegistration;
+  String get requestInvalid;
+  String get accountNotActivated;
+  String get accountDisabled;
+  String get accountInactive;
+  String get socialLoginUnavailable;
+  String get socialLoginCancelled;
+  String get socialLoginFailed;
+  String get socialLoginBrowserFailed;
+  String get socialLoginTimedOut;
+  String get socialLoginCodeInvalid;
+  String get socialLoginNotConfigured;
+  String get sessionExpired;
+  String get invalidApiKey;
+  String get couldNotLoadProfile;
+  String get uploadSessionFailed;
+  String get uploadFailed;
+  String get fileTooLarge;
+  String get networkError;
+  String get scanFailed;
+  String get folderPickFailed;
+  String get genericError;
+
   // —— Home ——
   String hiUser(String username);
 

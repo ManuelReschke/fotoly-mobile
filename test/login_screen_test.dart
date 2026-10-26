@@ -82,4 +82,42 @@ void main() {
     expect(find.text('Create account'), findsWidgets);
     expect(find.text('Username'), findsOneWidget);
   });
+
+  testWidgets('wrong password shows a German error on the German login', (
+    tester,
+  ) async {
+    final locale = LocaleController(prefs: MemoryPrefsStore());
+    await locale.setLocale(AppLocale.de);
+    final auth = AuthService(
+      secureStore: MemorySecureStore(),
+      clientFactory: ({apiKey, accessToken}) => PixelfoxApiClient(
+        apiKey: apiKey,
+        accessToken: accessToken,
+        httpClient: FakeApiHttp(
+          loginStatus: 401,
+          loginBody:
+              '{"error":"unauthorized","message":"Invalid email or password"}',
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<LocaleController>.value(value: locale),
+          ChangeNotifierProvider<AuthService>.value(value: auth),
+        ],
+        child: const MaterialApp(home: LoginScreen()),
+      ),
+    );
+
+    await tester.enterText(find.byType(TextField).at(0), 'pete@example.com');
+    await tester.enterText(find.byType(TextField).at(1), 'wrong-password');
+    await tester.tap(find.text('Einloggen'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('E-Mail oder Passwort ist falsch.'), findsWidgets);
+    expect(find.textContaining('Invalid email'), findsNothing);
+  });
 }

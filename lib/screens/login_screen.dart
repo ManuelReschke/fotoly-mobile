@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../config/app_brand.dart';
 import '../l10n/l10n_scope.dart';
+import '../l10n/user_error_l10n.dart';
 import '../services/auth_service.dart';
 import '../services/pixelfox_api_client.dart';
 import '../widgets/pixelfox_logo.dart';
@@ -57,9 +58,12 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _showError(AuthService auth, bool ok) {
     if (!ok && auth.error != null) {
+      final s = context.l10nRead;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(auth.error!),
+          content: Text(
+            localizeUserError(s, auth.error, fallback: s.loginFailed),
+          ),
           backgroundColor: Theme.of(context).colorScheme.error,
         ),
       );
@@ -139,7 +143,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   if (auth.error != null) ...[
                     const SizedBox(height: 12),
                     Text(
-                      auth.error!,
+                      localizeUserError(s, auth.error, fallback: s.loginFailed),
                       style: TextStyle(color: scheme.error),
                       textAlign: TextAlign.center,
                     ),

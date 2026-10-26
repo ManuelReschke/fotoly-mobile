@@ -352,7 +352,7 @@ class BackupService extends ChangeNotifier {
     if (e is FoldersInaccessibleException) {
       return BackupErrorCodes.foldersInaccessible;
     }
-    return e.toString();
+    return BackupErrorCodes.scanFailed;
   }
 
   /// Change detection for quiet scans. A full path string for every photo is

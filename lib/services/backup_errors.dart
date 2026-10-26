@@ -6,4 +6,6 @@ abstract final class BackupErrorCodes {
   static const foldersInaccessible = 'error.folders_inaccessible';
   static const noFolders = 'error.no_folders';
   static const noImages = 'error.no_images';
+  static const uploadsFailed = 'error.uploads_failed';
+  static const scanFailed = 'error.scan_failed';
 }

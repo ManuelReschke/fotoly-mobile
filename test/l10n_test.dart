@@ -85,9 +85,9 @@ void main() {
     const de = AppStringsDe();
     const en = AppStringsEn();
     expect(de.appearanceSectionTitle, 'Erscheinungsbild');
-    expect(de.appearanceSectionSubtitle, 'Hell, Dark oder System');
+    expect(de.appearanceSectionSubtitle, 'Hell, Dunkel oder System');
     expect(de.themeModeLight, 'Hell');
-    expect(de.themeModeDark, 'Dark');
+    expect(de.themeModeDark, 'Dunkel');
     expect(de.themeModeSystem, 'System');
     expect(en.appearanceSectionTitle, 'Appearance');
     expect(en.appearanceSectionSubtitle, 'Light, Dark, or System');
@@ -130,5 +130,9 @@ void main() {
     expect(en.checkEmailBody('a@b.c'), contains('a@b.c'));
     expect(de.backToLogin, 'Zum Login');
     expect(en.backToLogin, 'Back to login');
+    expect(de.invalidCredentials, 'E-Mail oder Passwort ist falsch.');
+    expect(en.invalidCredentials, 'Email or password is wrong.');
+    expect(de.invalidApiKey, contains('API-Schlüssel'));
+    expect(en.invalidApiKey, contains('Invalid API key'));
   });
 }

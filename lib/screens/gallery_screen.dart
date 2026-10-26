@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../l10n/l10n_scope.dart';
+import '../l10n/user_error_l10n.dart';
 import '../services/backup_service.dart';
 import '../services/gallery_service.dart';
 import '../widgets/gallery_image.dart';
@@ -61,9 +62,14 @@ class _GalleryScreenState extends State<GalleryScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (gallery.snackMessage != message) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
+      final s = context.l10nRead;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            localizeUserError(s, message, fallback: s.galleryLoadError),
+          ),
+        ),
+      );
       gallery.clearSnack();
     });
   }
@@ -151,7 +157,11 @@ class _GalleryScreenState extends State<GalleryScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  gallery.error ?? s.galleryLoadError,
+                  localizeUserError(
+                    s,
+                    gallery.error,
+                    fallback: s.galleryLoadError,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),

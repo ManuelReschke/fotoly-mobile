@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../config/app_info.dart';
 import '../l10n/l10n_scope.dart';
+import '../l10n/user_error_l10n.dart';
 import '../models/backup_folder.dart';
 import '../models/pixelfox_album.dart';
 import '../services/auth_service.dart';
@@ -128,7 +129,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
       await _finishAddFolder(path);
     } catch (e) {
-      _snack('$e');
+      _snack(localizeUserError(s, '$e', fallback: s.folderPickFailed));
     } finally {
       if (mounted) setState(() => _picking = false);
     }

@@ -496,6 +496,124 @@ class AppStringsDe extends AppStrings {
   String get backToLogin => 'Zum Login';
 
   @override
+  String get enterEmailPassword => 'Bitte E-Mail und Passwort eingeben.';
+
+  @override
+  String get enterUsernameEmailPassword =>
+      'Bitte Benutzername, E-Mail und Passwort eingeben.';
+
+  @override
+  String get enterApiKey =>
+      'Bitte den API-Schlüssel von ${AppBrand.current.displayName} eingeben.';
+
+  @override
+  String get invalidCredentials => 'E-Mail oder Passwort ist falsch.';
+
+  @override
+  String get loginFailed => 'Anmeldung fehlgeschlagen. Bitte erneut versuchen.';
+
+  @override
+  String get loginDisabled => 'Der Login ist derzeit deaktiviert.';
+
+  @override
+  String get registrationFailed =>
+      'Registrierung fehlgeschlagen. Bitte erneut versuchen.';
+
+  @override
+  String get registrationDisabled =>
+      'Die Registrierung ist derzeit deaktiviert.';
+
+  @override
+  String get emailAlreadyRegistered => 'Diese E-Mail ist schon registriert.';
+
+  @override
+  String get passwordTooShort =>
+      'Das Passwort muss mindestens 6 Zeichen lang sein.';
+
+  @override
+  String get usernameTooShort =>
+      'Der Benutzername muss mindestens 3 Zeichen lang sein.';
+
+  @override
+  String get invalidEmail => 'Bitte eine gültige E-Mail-Adresse eingeben.';
+
+  @override
+  String get invalidRegistration => 'Bitte die Angaben prüfen.';
+
+  @override
+  String get requestInvalid =>
+      'Die Anfrage war ungültig. Bitte erneut versuchen.';
+
+  @override
+  String get accountNotActivated => 'Bitte aktiviere dein Konto per E-Mail.';
+
+  @override
+  String get accountDisabled =>
+      'Dein Konto wurde deaktiviert. Bitte kontaktiere den Support.';
+
+  @override
+  String get accountInactive => 'Dein Konto ist derzeit nicht aktiv.';
+
+  @override
+  String get socialLoginUnavailable =>
+      'Social Login ist auf diesem Gerät nicht verfügbar.';
+
+  @override
+  String get socialLoginCancelled => 'Social Login wurde abgebrochen.';
+
+  @override
+  String get socialLoginFailed =>
+      'Social Login fehlgeschlagen. Bitte erneut versuchen.';
+
+  @override
+  String get socialLoginBrowserFailed =>
+      'Der Browser für den Login konnte nicht geöffnet werden.';
+
+  @override
+  String get socialLoginTimedOut =>
+      'Social Login hat zu lange gedauert. Bitte erneut versuchen.';
+
+  @override
+  String get socialLoginCodeInvalid =>
+      'Der Anmeldecode ist ungültig oder abgelaufen.';
+
+  @override
+  String get socialLoginNotConfigured =>
+      'Dieser Login ist hier nicht eingerichtet.';
+
+  @override
+  String get sessionExpired =>
+      'Die Anmeldung ist abgelaufen. Bitte erneut anmelden.';
+
+  @override
+  String get invalidApiKey =>
+      'Ungültiger API-Schlüssel. Prüfe den Schlüssel in den ${AppBrand.current.displayName}-Einstellungen.';
+
+  @override
+  String get couldNotLoadProfile => 'Profil konnte nicht geladen werden.';
+
+  @override
+  String get uploadSessionFailed => 'Der Upload konnte nicht gestartet werden.';
+
+  @override
+  String get uploadFailed => 'Upload fehlgeschlagen.';
+
+  @override
+  String get fileTooLarge => 'Die Datei ist zu groß.';
+
+  @override
+  String get networkError => 'Keine Verbindung. Bitte später erneut versuchen.';
+
+  @override
+  String get scanFailed => 'Die Ordner konnten nicht gelesen werden.';
+
+  @override
+  String get folderPickFailed => 'Der Ordner konnte nicht gewählt werden.';
+
+  @override
+  String get genericError => 'Das hat nicht geklappt. Bitte erneut versuchen.';
+
+  @override
   String hiUser(String username) => 'Hallo, $username';
 
   @override
@@ -518,7 +636,7 @@ class AppStringsDe extends AppStrings {
           ? '1 Foto wartet auf den Fuchsbau'
           : '$pendingCount Fotos warten auf den Fuchsbau';
     }
-    if (securedCount > 0) return 'Alles ruhig im Bau — du bist up to date';
+    if (securedCount > 0) return 'Alles ruhig im Bau — alles ist aktuell';
     return 'Ordner sind gewählt — warte auf Fotos';
   }
 
@@ -620,7 +738,7 @@ class AppStringsDe extends AppStrings {
 
   @override
   String uploadSummary(int completed, int failed, int total) =>
-      '$completed ok · $failed fehlgeschlagen · $total gesamt';
+      '$completed gesichert · $failed fehlgeschlagen · $total gesamt';
 
   @override
   String get foldersToBackUp => 'Ordner zum Sichern';
@@ -728,13 +846,13 @@ class AppStringsDe extends AppStrings {
   String get appearanceSectionTitle => 'Erscheinungsbild';
 
   @override
-  String get appearanceSectionSubtitle => 'Hell, Dark oder System';
+  String get appearanceSectionSubtitle => 'Hell, Dunkel oder System';
 
   @override
   String get themeModeLight => 'Hell';
 
   @override
-  String get themeModeDark => 'Dark';
+  String get themeModeDark => 'Dunkel';
 
   @override
   String get themeModeSystem => 'System';

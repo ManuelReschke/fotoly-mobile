@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../l10n/l10n_scope.dart';
+import '../l10n/user_error_l10n.dart';
 import '../services/auth_service.dart';
 import 'check_email_screen.dart';
 
@@ -48,9 +49,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!ok) {
       final message = auth.error;
       if (message != null) {
+        final s = context.l10nRead;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(message),
+            content: Text(
+              localizeUserError(s, message, fallback: s.registrationFailed),
+            ),
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
@@ -156,7 +160,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   if (auth.error != null) ...[
                     const SizedBox(height: 12),
                     Text(
-                      auth.error!,
+                      localizeUserError(
+                        s,
+                        auth.error,
+                        fallback: s.registrationFailed,
+                      ),
                       style: TextStyle(color: scheme.error),
                       textAlign: TextAlign.center,
                     ),

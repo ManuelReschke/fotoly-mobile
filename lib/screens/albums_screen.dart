@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../config/api_config.dart';
 import '../l10n/album_error_l10n.dart';
 import '../l10n/l10n_scope.dart';
+import '../l10n/user_error_l10n.dart';
 import '../models/pixelfox_album.dart';
 import '../services/album_service.dart';
 import '../services/backup_service.dart';
@@ -46,7 +47,8 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (albums.snackMessage != message) return;
-      _snack(message);
+      final s = context.l10nRead;
+      _snack(localizeUserError(s, message, fallback: s.couldNotLoadAlbums));
       albums.clearSnack();
     });
   }
@@ -136,7 +138,11 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  albums.error ?? s.couldNotLoadAlbums,
+                  localizeUserError(
+                    s,
+                    albums.error,
+                    fallback: s.couldNotLoadAlbums,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),

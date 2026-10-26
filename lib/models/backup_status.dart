@@ -1,4 +1,4 @@
-import '../config/app_brand.dart';
+import '../services/backup_errors.dart';
 
 /// High-level home-screen status derived from the backup job.
 enum BackupPhase {
@@ -121,7 +121,6 @@ BackupStatus deriveBackupStatus({
         completed: completed,
         total: total,
         failed: 0,
-        message: 'All $completed photos are safe on ${AppBrand.current.displayName}',
       );
     }
     return BackupStatus(
@@ -129,7 +128,7 @@ BackupStatus deriveBackupStatus({
       completed: completed,
       total: total,
       failed: failed,
-      message: '$failed of $total uploads failed',
+      message: BackupErrorCodes.uploadsFailed,
     );
   }
   if (errorMessage != null && errorMessage.isNotEmpty) {

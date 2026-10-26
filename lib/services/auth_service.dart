@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../config/api_config.dart';
 import '../config/app_brand.dart';
 import '../models/user_profile.dart';
+import 'auth_errors.dart';
 import 'pixelfox_api_client.dart';
 import 'storage.dart';
 
@@ -79,8 +80,11 @@ class AuthService extends ChangeNotifier {
       } else {
         await _validateAndStore(apiKey: key.trim());
       }
-    } catch (e) {
-      _error = e.toString();
+    } on PixelfoxApiException catch (e) {
+      _error = e.message;
+      _profile = null;
+    } catch (_) {
+      _error = AuthErrorCodes.loginFailed;
       _profile = null;
     } finally {
       _loading = false;
@@ -100,7 +104,7 @@ class AuthService extends ChangeNotifier {
   Future<bool> loginWithPassword(String email, String password) async {
     final trimmedEmail = email.trim();
     if (trimmedEmail.isEmpty || password.isEmpty) {
-      _error = 'Please enter email and password';
+      _error = AuthErrorCodes.credentialsRequired;
       notifyListeners();
       return false;
     }
@@ -118,8 +122,8 @@ class AuthService extends ChangeNotifier {
       _error = e.message;
       _clearLocalAuth();
       return false;
-    } catch (e) {
-      _error = 'Login failed: $e';
+    } catch (_) {
+      _error = AuthErrorCodes.loginFailed;
       _clearLocalAuth();
       return false;
     } finally {
@@ -136,7 +140,7 @@ class AuthService extends ChangeNotifier {
     final trimmedName = username.trim();
     final trimmedEmail = email.trim();
     if (trimmedName.isEmpty || trimmedEmail.isEmpty || password.isEmpty) {
-      _error = 'Please enter username, email and password';
+      _error = AuthErrorCodes.registerFieldsRequired;
       notifyListeners();
       return false;
     }
@@ -153,8 +157,8 @@ class AuthService extends ChangeNotifier {
     } on PixelfoxApiException catch (e) {
       _error = e.message;
       return false;
-    } catch (e) {
-      _error = 'Registration failed: $e';
+    } catch (_) {
+      _error = AuthErrorCodes.registerFailed;
       return false;
     } finally {
       _loading = false;
@@ -165,7 +169,7 @@ class AuthService extends ChangeNotifier {
   Future<bool> loginWithProvider(String providerId) async {
     final opener = _openAuthSession;
     if (opener == null) {
-      _error = 'Social login is not available on this device';
+      _error = AuthErrorCodes.socialUnavailable;
       notifyListeners();
       return false;
     }
@@ -179,7 +183,7 @@ class AuthService extends ChangeNotifier {
       );
       final code = result.queryParameters['code']?.trim() ?? '';
       if (code.isEmpty) {
-        _error = 'Social login was cancelled';
+        _error = AuthErrorCodes.socialCancelled;
         return false;
       }
       final session = await _guestClient.exchangeAuthCode(code);
@@ -189,8 +193,12 @@ class AuthService extends ChangeNotifier {
       _error = e.message;
       _clearLocalAuth();
       return false;
-    } catch (e) {
-      _error = 'Social login failed: $e';
+    } on StateError catch (e) {
+      _error = e.message;
+      _clearLocalAuth();
+      return false;
+    } catch (_) {
+      _error = AuthErrorCodes.socialFailed;
       _clearLocalAuth();
       return false;
     } finally {
@@ -203,7 +211,7 @@ class AuthService extends ChangeNotifier {
   Future<bool> loginWithApiKey(String rawKey) async {
     final key = rawKey.trim();
     if (key.isEmpty) {
-      _error = 'Please enter your ${AppBrand.current.displayName} API key';
+      _error = AuthErrorCodes.apiKeyRequired;
       notifyListeners();
       return false;
     }
@@ -220,8 +228,8 @@ class AuthService extends ChangeNotifier {
       _error = e.message;
       _clearLocalAuth();
       return false;
-    } catch (e) {
-      _error = 'Login failed: $e';
+    } catch (_) {
+      _error = AuthErrorCodes.loginFailed;
       _clearLocalAuth();
       return false;
     } finally {
@@ -252,8 +260,11 @@ class AuthService extends ChangeNotifier {
     try {
       await _validateAndStore(apiKey: _apiKey, accessToken: _accessToken);
       return true;
-    } catch (e) {
-      _error = e.toString();
+    } on PixelfoxApiException catch (e) {
+      _error = e.message;
+      return false;
+    } catch (_) {
+      _error = AuthErrorCodes.loginFailed;
       return false;
     } finally {
       _loading = false;

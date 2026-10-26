@@ -88,7 +88,7 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Create account'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Email is already registered'), findsWidgets);
+    expect(find.text('This email is already registered.'), findsWidgets);
     expect(find.byType(SnackBar), findsOneWidget);
     expect(find.widgetWithText(FilledButton, 'Create account'), findsOneWidget);
     expect(find.text('Check your email'), findsNothing);

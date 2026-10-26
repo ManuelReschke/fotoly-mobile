@@ -484,6 +484,114 @@ class AppStringsEn extends AppStrings {
   String get backToLogin => 'Back to login';
 
   @override
+  String get enterEmailPassword => 'Please enter email and password.';
+
+  @override
+  String get enterUsernameEmailPassword =>
+      'Please enter username, email and password.';
+
+  @override
+  String get enterApiKey =>
+      'Please enter your ${AppBrand.current.displayName} API key.';
+
+  @override
+  String get invalidCredentials => 'Email or password is wrong.';
+
+  @override
+  String get loginFailed => 'Sign-in failed. Please try again.';
+
+  @override
+  String get loginDisabled => 'Sign-in is currently disabled.';
+
+  @override
+  String get registrationFailed => 'Registration failed. Please try again.';
+
+  @override
+  String get registrationDisabled => 'Registration is currently disabled.';
+
+  @override
+  String get emailAlreadyRegistered => 'This email is already registered.';
+
+  @override
+  String get passwordTooShort => 'Password must be at least 6 characters.';
+
+  @override
+  String get usernameTooShort => 'Username must be at least 3 characters.';
+
+  @override
+  String get invalidEmail => 'Please enter a valid email address.';
+
+  @override
+  String get invalidRegistration => 'Please check the details.';
+
+  @override
+  String get requestInvalid => 'The request was invalid. Please try again.';
+
+  @override
+  String get accountNotActivated => 'Please activate your account via email.';
+
+  @override
+  String get accountDisabled =>
+      'Your account has been disabled. Please contact support.';
+
+  @override
+  String get accountInactive => 'Your account is currently inactive.';
+
+  @override
+  String get socialLoginUnavailable =>
+      'Social login is not available on this device.';
+
+  @override
+  String get socialLoginCancelled => 'Social login was cancelled.';
+
+  @override
+  String get socialLoginFailed => 'Social login failed. Please try again.';
+
+  @override
+  String get socialLoginBrowserFailed => 'Could not open the login browser.';
+
+  @override
+  String get socialLoginTimedOut => 'Social login timed out. Please try again.';
+
+  @override
+  String get socialLoginCodeInvalid =>
+      'The sign-in code is invalid or expired.';
+
+  @override
+  String get socialLoginNotConfigured => 'This sign-in is not set up here.';
+
+  @override
+  String get sessionExpired => 'Session expired — please sign in again.';
+
+  @override
+  String get invalidApiKey =>
+      'Invalid API key — check the key in your ${AppBrand.current.displayName} settings.';
+
+  @override
+  String get couldNotLoadProfile => 'Could not load profile.';
+
+  @override
+  String get uploadSessionFailed => 'Could not start the upload.';
+
+  @override
+  String get uploadFailed => 'Upload failed.';
+
+  @override
+  String get fileTooLarge => 'The file is too large.';
+
+  @override
+  String get networkError => 'No connection. Please try again later.';
+
+  @override
+  String get scanFailed => 'Could not read the folders.';
+
+  @override
+  String get folderPickFailed => 'Could not choose the folder.';
+
+  @override
+  String get genericError => 'That did not work. Please try again.';
+
+  @override
   String hiUser(String username) => 'Hi, $username';
 
   @override
