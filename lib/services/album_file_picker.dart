@@ -10,10 +10,10 @@ class AlbumUploadFile {
 
 /// Opens the platform image picker. Returns an empty list when cancelled.
 Future<List<AlbumUploadFile>> pickAlbumUploadFiles() async {
-  final result = await FilePicker.pickFiles(type: FileType.image);
-  if (result == null) return const [];
+  final picked = await FilePicker.pickFiles(type: FileType.image);
+  if (picked.isEmpty) return const [];
   final files = <AlbumUploadFile>[];
-  for (final file in result.files) {
+  for (final file in picked) {
     final bytes = await file.readAsBytes();
     if (bytes.isEmpty) continue;
     final name = file.name.trim().isEmpty ? 'image.jpg' : file.name.trim();
