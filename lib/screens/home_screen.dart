@@ -208,9 +208,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 16),
               ],
               Expanded(
-                child: Center(
-                  child: SingleChildScrollView(
-                    child: BackupStatusView(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final statusView = BackupStatusView(
                       status: status,
                       pending: backup.pendingImages,
                       securedCount: backup.securedCount,
@@ -222,8 +222,23 @@ class _HomeScreenState extends State<HomeScreen> {
                       onChooseFolders: !settings.hasFolders && !backup.running
                           ? () => _openSettingsThenRefresh(backup)
                           : null,
-                    ),
-                  ),
+                    );
+                    // Pending photos scroll inside the card. This branch stays
+                    // out of the page scroll view so the start page does not grow.
+                    final pendingOverview =
+                        status.phase == BackupPhase.idle &&
+                        !backup.scanning &&
+                        backup.pendingImages.isNotEmpty;
+                    if (pendingOverview) return statusView;
+                    return SingleChildScrollView(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
+                        ),
+                        child: Center(child: statusView),
+                      ),
+                    );
+                  },
                 ),
               ),
               if (settings.hasFolders) ...[

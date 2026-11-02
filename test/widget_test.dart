@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fotoly_mobile/config/app_brand.dart';
@@ -12,6 +15,7 @@ import 'package:fotoly_mobile/widgets/appearance_card.dart';
 import 'package:fotoly_mobile/widgets/backup_status_view.dart';
 import 'package:fotoly_mobile/widgets/home_welcome_header.dart';
 import 'package:fotoly_mobile/widgets/language_card.dart';
+import 'package:fotoly_mobile/widgets/local_file_thumbnail.dart';
 import 'package:fotoly_mobile/widgets/storage_usage_card.dart';
 import 'package:provider/provider.dart';
 
@@ -53,6 +57,11 @@ Future<void> pumpAppearance(
     ),
   );
 }
+
+/// 1×1 red PNG. Enough for [Image.file] to decode in a widget test.
+final List<int> _onePixelPng = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC',
+);
 
 void main() {
   testWidgets('home working state shows current file name', (tester) async {
@@ -183,7 +192,9 @@ void main() {
     expect(AppTheme.storageHigh, const Color(0xFFEF4444));
   });
 
-  testWidgets('idle with pending shows not-yet-secured list', (tester) async {
+  testWidgets('idle with pending shows photo previews instead of file names', (
+    tester,
+  ) async {
     await pumpL10n(
       tester,
       const BackupStatusView(
@@ -199,10 +210,16 @@ void main() {
         ],
       ),
     );
+    await tester.pump();
 
     expect(find.text('2 photos not yet secured'), findsOneWidget);
-    expect(find.text('holiday.jpg — not yet secured'), findsOneWidget);
-    expect(find.text('cat.png — not yet secured'), findsOneWidget);
+    expect(find.text('holiday.jpg — not yet secured'), findsNothing);
+    expect(find.text('cat.png — not yet secured'), findsNothing);
+    expect(find.byKey(const ValueKey('/p/holiday.jpg')), findsOneWidget);
+    expect(find.byKey(const ValueKey('/p/cat.png')), findsOneWidget);
+    expect(find.byType(GridView), findsOneWidget);
+    expect(find.byType(Image), findsNothing);
+    expect(find.byType(LocalFileThumbnailPlaceholder), findsNWidgets(2));
     expect(find.textContaining('2 already safe'), findsOneWidget);
   });
 
@@ -217,9 +234,67 @@ void main() {
         ],
       ),
     );
+    await tester.pump();
 
     expect(find.text('1 Foto noch nicht gesichert'), findsOneWidget);
-    expect(find.text('a.jpg — noch nicht gesichert'), findsOneWidget);
+    expect(find.text('a.jpg — noch nicht gesichert'), findsNothing);
+    expect(find.byKey(const ValueKey('/p/a.jpg')), findsOneWidget);
+  });
+
+  testWidgets('pending previews scroll inside the card and keep the title', (
+    tester,
+  ) async {
+    final pending = [
+      for (var i = 0; i < 40; i++)
+        LocalImageFile(path: '/p/$i.jpg', name: '$i.jpg', sizeBytes: 1),
+    ];
+    await pumpL10n(
+      tester,
+      BackupStatusView(status: BackupStatus.idle, pending: pending),
+    );
+    await tester.pump();
+
+    final title = find.text('40 photos not yet secured');
+    expect(title, findsOneWidget);
+    expect(find.textContaining('…and '), findsNothing);
+    expect(find.byKey(const ValueKey('/p/0.jpg')), findsOneWidget);
+    expect(find.byKey(const ValueKey('/p/39.jpg')), findsNothing);
+
+    final titleDy = tester.getTopLeft(title).dy;
+    final cardBottom = tester.getBottomLeft(find.byType(BackupStatusView)).dy;
+
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('/p/39.jpg')),
+      500,
+    );
+    await tester.pump();
+
+    expect(find.byKey(const ValueKey('/p/39.jpg')), findsOneWidget);
+    expect(tester.getTopLeft(title).dy, titleDy);
+    expect(tester.getBottomLeft(find.byType(BackupStatusView)).dy, cardBottom);
+  });
+
+  testWidgets('pending preview uses a local photo file', (tester) async {
+    final dir = Directory.systemTemp.createTempSync('fotoly-pending-preview');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final photo = File('${dir.path}/one.png')..writeAsBytesSync(_onePixelPng);
+
+    await pumpL10n(
+      tester,
+      BackupStatusView(
+        status: BackupStatus.idle,
+        pending: [
+          LocalImageFile(
+            path: photo.path,
+            name: 'one.png',
+            sizeBytes: photo.lengthSync(),
+          ),
+        ],
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(Image), findsOneWidget);
   });
 
   testWidgets('appearance card lists three modes and selects Dark', (

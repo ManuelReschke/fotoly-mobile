@@ -238,8 +238,6 @@ abstract class AppStrings {
   String photosNotYetSecured(int count);
   String onePhotoNotYetSecured();
   String alreadySafeOnPixelfox(int securedCount);
-  String notYetSecuredFile(String fileName);
-  String andMore(int extra);
   String get everythingSecured;
   String everythingSecuredBody(int securedCount);
   String get backingUpRightNow;

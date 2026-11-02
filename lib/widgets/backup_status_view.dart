@@ -6,6 +6,7 @@ import '../l10n/l10n_scope.dart';
 import '../models/backup_status.dart';
 import '../services/file_scanner.dart';
 import '../theme/app_theme.dart';
+import 'local_file_thumbnail.dart';
 
 List<Color> _heroColors(
   BuildContext context,
@@ -259,90 +260,166 @@ class _PendingHero extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = context.l10n;
     final scheme = Theme.of(context).colorScheme;
-    final preview = pending.take(8).toList();
-    final extra = pending.length - preview.length;
 
-    return _HeroCard(
-      gradient: AppTheme.heroPending(context),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Fill the middle slot when the page gives a height. The photo grid
+        // scrolls inside that slot, so the start page itself does not grow.
+        final expand = constraints.maxHeight.isFinite;
+        return _HeroCard(
+          expand: expand,
+          gradient: AppTheme.heroPending(context),
+          child: Column(
+            mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppTheme.foxOrange.withValues(alpha: 0.15),
-                ),
-                child: Icon(
-                  Icons.cloud_off_outlined,
-                  size: 32,
-                  color: AppTheme.foxOrange,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      pending.length == 1
-                          ? s.onePhotoNotYetSecured()
-                          : s.photosNotYetSecured(pending.length),
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                    if (securedCount > 0)
-                      Text(
-                        s.alreadySafeOnPixelfox(securedCount),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppTheme.successGreen,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          ...preview.map(
-            (f) => Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Row(
+              Row(
                 children: [
-                  Icon(
-                    Icons.image_outlined,
-                    size: 18,
-                    color: AppTheme.foxAmber,
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppTheme.foxOrange.withValues(alpha: 0.15),
+                    ),
+                    child: Icon(
+                      Icons.cloud_off_outlined,
+                      size: 32,
+                      color: AppTheme.foxOrange,
+                    ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 16),
                   Expanded(
-                    child: Text(
-                      s.notYetSecuredFile(f.name),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          pending.length == 1
+                              ? s.onePhotoNotYetSecured()
+                              : s.photosNotYetSecured(pending.length),
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: scheme.onSurface,
+                              ),
+                        ),
+                        if (securedCount > 0)
+                          Text(
+                            s.alreadySafeOnPixelfox(securedCount),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: AppTheme.successGreen),
+                          ),
+                      ],
                     ),
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 16),
+              if (expand)
+                Expanded(child: _PendingThumbGrid(files: pending))
+              else
+                SizedBox(
+                  height: _unboundedPreviewHeight(context),
+                  child: _PendingThumbGrid(files: pending),
+                ),
+            ],
           ),
-          if (extra > 0)
-            Text(
-              s.andMore(extra),
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: scheme.onSurface.withValues(alpha: 0.6),
-              ),
+        );
+      },
+    );
+  }
+}
+
+/// Cap used only when a parent scroll view gives this card infinite height.
+double _unboundedPreviewHeight(BuildContext context) {
+  final slot = MediaQuery.sizeOf(context).height * 0.42;
+  if (slot < 180) return 180;
+  if (slot > 420) return 420;
+  return slot;
+}
+
+class _PendingThumbGrid extends StatefulWidget {
+  const _PendingThumbGrid({required this.files});
+
+  final List<LocalImageFile> files;
+
+  @override
+  State<_PendingThumbGrid> createState() => _PendingThumbGridState();
+}
+
+class _PendingThumbGridState extends State<_PendingThumbGrid> {
+  final ScrollController _controller = ScrollController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const crossAxisCount = 3;
+        const spacing = 4.0;
+        final tile = constraints.maxWidth.isFinite
+            ? (constraints.maxWidth - spacing * (crossAxisCount - 1)) /
+                  crossAxisCount
+            : 96.0;
+        final cacheWidth = (tile * MediaQuery.devicePixelRatioOf(context))
+            .round()
+            .clamp(1, 512);
+        return Scrollbar(
+          controller: _controller,
+          thumbVisibility: true,
+          child: GridView.builder(
+            controller: _controller,
+            primary: false,
+            padding: EdgeInsets.zero,
+            physics: const ClampingScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              mainAxisSpacing: spacing,
+              crossAxisSpacing: spacing,
+              childAspectRatio: 1,
             ),
-        ],
+            itemCount: widget.files.length,
+            itemBuilder: (context, index) {
+              final file = widget.files[index];
+              return _PendingThumb(
+                key: ValueKey(file.path),
+                file: file,
+                cacheWidth: cacheWidth,
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _PendingThumb extends StatelessWidget {
+  const _PendingThumb({
+    super.key,
+    required this.file,
+    required this.cacheWidth,
+  });
+
+  final LocalImageFile file;
+  final int cacheWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: file.name,
+      child: Semantics(
+        label: file.name,
+        image: true,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: LocalFileThumbnail(path: file.path, cacheWidth: cacheWidth),
+        ),
       ),
     );
   }
@@ -641,15 +718,21 @@ class _FailedHero extends StatelessWidget {
 }
 
 class _HeroCard extends StatelessWidget {
-  const _HeroCard({required this.child, required this.gradient});
+  const _HeroCard({
+    required this.child,
+    required this.gradient,
+    this.expand = false,
+  });
 
   final Widget child;
   final List<Color> gradient;
+  final bool expand;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final card = Container(
       width: double.infinity,
+      clipBehavior: expand ? Clip.antiAlias : Clip.none,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
         gradient: LinearGradient(
@@ -669,6 +752,12 @@ class _HeroCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
         child: child,
       ),
+    );
+    if (!expand) return card;
+    return SizedBox(
+      width: double.infinity,
+      height: double.infinity,
+      child: card,
     );
   }
 }

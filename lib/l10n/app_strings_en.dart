@@ -675,12 +675,6 @@ class AppStringsEn extends AppStrings {
       '$securedCount already safe on ${AppBrand.current.displayName}';
 
   @override
-  String notYetSecuredFile(String fileName) => '$fileName — not yet secured';
-
-  @override
-  String andMore(int extra) => '…and $extra more';
-
-  @override
   String get everythingSecured => 'Everything is secured';
 
   @override
