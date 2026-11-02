@@ -327,4 +327,17 @@ abstract class AppStrings {
   String imagesCount(int count);
   String get imagesOnPixelfox;
   String get refreshUsageTooltip;
+
+  // —— Premium upsell (free accounts only) ——
+  String get premiumUpsellBadge;
+  String get premiumUpsellTitle;
+  String get premiumUpsellBody;
+  String get premiumUpsellStorageBenefit;
+  String get premiumUpsellAdsBenefit;
+  String get premiumUpsellAlbumsBenefit;
+  String get premiumUpsellPriceAmount;
+  String get premiumUpsellPriceCaption;
+  String get premiumUpsellPriceNote;
+  String get premiumUpsellCta;
+  String get premiumUpsellOpenFailed;
 }

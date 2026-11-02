@@ -68,6 +68,7 @@ void main() {
 
     expect(AppBrand.current, AppBrand.fotoly);
     expect(ApiConfig.baseUrl, 'https://fotoly.eu');
+    expect(ApiConfig.pricingUrl, Uri.parse('https://fotoly.eu/pricing'));
     expect(ApiConfig.callbackUrlScheme, 'fotoly');
     expect(ApiConfig.appRedirectUri, 'fotoly://auth/callback');
     expect(AppInfo.websiteHost, 'fotoly.eu');

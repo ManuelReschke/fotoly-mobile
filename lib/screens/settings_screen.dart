@@ -19,6 +19,7 @@ import '../widgets/full_sync_card.dart';
 import '../widgets/gravatar_avatar.dart';
 import '../widgets/language_card.dart';
 import '../widgets/pixelfox_logo.dart';
+import '../widgets/premium_upsell_card.dart';
 import '../widgets/storage_usage_card.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -197,6 +198,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               refreshing: _refreshingProfile || auth.loading,
               onRefresh: () => _refreshProfile(),
             ),
+            if (profile.isFreePlan) ...[
+              const SizedBox(height: 12),
+              const PremiumUpsellCard(),
+            ],
             const SizedBox(height: 12),
           ],
           FoldersBackupCard(

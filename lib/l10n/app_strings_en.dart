@@ -929,4 +929,39 @@ class AppStringsEn extends AppStrings {
 
   @override
   String get refreshUsageTooltip => 'Refresh usage';
+
+  @override
+  String get premiumUpsellBadge => 'Premium';
+
+  @override
+  String get premiumUpsellTitle => 'More room for your photos';
+
+  @override
+  String get premiumUpsellBody =>
+      'Your free account includes 5 GB. Premium gives you 200 GB of storage, with no ads.';
+
+  @override
+  String get premiumUpsellStorageBenefit => '200 GB storage';
+
+  @override
+  String get premiumUpsellAdsBenefit => 'No ads';
+
+  @override
+  String get premiumUpsellAlbumsBenefit => '50 albums · 50 MB per photo';
+
+  @override
+  String get premiumUpsellPriceAmount => 'from €3.33';
+
+  @override
+  String get premiumUpsellPriceCaption => 'per month';
+
+  @override
+  String get premiumUpsellPriceNote =>
+      'Yearly plan, 2 months free · or €3.99 monthly';
+
+  @override
+  String get premiumUpsellCta => 'Unlock Premium';
+
+  @override
+  String get premiumUpsellOpenFailed => 'Could not open the pricing page.';
 }

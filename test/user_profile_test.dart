@@ -52,4 +52,21 @@ void main() {
     );
     expect(full.storageUsageRatio, 1.0);
   });
+
+  test('isFreePlan matches only the free account', () {
+    UserProfile profile(String plan) => UserProfile(
+      id: 1,
+      username: 'x',
+      email: '',
+      status: 'active',
+      plan: plan,
+    );
+
+    expect(profile('free').isFreePlan, isTrue);
+    expect(profile('Free').isFreePlan, isTrue);
+    expect(profile(' sparfuchs ').isFreePlan, isTrue);
+    expect(profile('premium').isFreePlan, isFalse);
+    expect(profile('premium_max').isFreePlan, isFalse);
+    expect(profile('').isFreePlan, isFalse);
+  });
 }

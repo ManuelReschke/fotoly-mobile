@@ -956,4 +956,40 @@ class AppStringsDe extends AppStrings {
 
   @override
   String get refreshUsageTooltip => 'Belegung aktualisieren';
+
+  @override
+  String get premiumUpsellBadge => 'Premium';
+
+  @override
+  String get premiumUpsellTitle => 'Mehr Platz für deine Fotos';
+
+  @override
+  String get premiumUpsellBody =>
+      'Dein kostenloses Konto hat 5 GB. Premium gibt dir 200 GB Speicher, ganz ohne Werbung.';
+
+  @override
+  String get premiumUpsellStorageBenefit => '200 GB Speicher';
+
+  @override
+  String get premiumUpsellAdsBenefit => 'Keine Werbung';
+
+  @override
+  String get premiumUpsellAlbumsBenefit => '50 Alben · 50 MB pro Foto';
+
+  @override
+  String get premiumUpsellPriceAmount => 'ab 3,33 €';
+
+  @override
+  String get premiumUpsellPriceCaption => 'im Monat';
+
+  @override
+  String get premiumUpsellPriceNote =>
+      'Jahresabo mit 2 Monaten gratis · oder 3,99 € monatlich';
+
+  @override
+  String get premiumUpsellCta => 'Premium freischalten';
+
+  @override
+  String get premiumUpsellOpenFailed =>
+      'Die Preisseite konnte nicht geöffnet werden.';
 }

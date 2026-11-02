@@ -16,6 +16,14 @@ class ApiConfig {
   /// Full API root, e.g. https://pixelfox.cc/api/v1
   static String get apiRoot => '$baseUrl$apiPrefix';
 
+  /// Public pricing page for the active brand.
+  static Uri get pricingUrl {
+    final root = baseUrl.endsWith('/')
+        ? baseUrl.substring(0, baseUrl.length - 1)
+        : baseUrl;
+    return Uri.parse('$root/pricing');
+  }
+
   static String profileUrl() => '$apiRoot/user/profile';
   static String uploadSessionsUrl() => '$apiRoot/upload/sessions';
   static String imagesUrl() => '$apiRoot/images';

@@ -38,6 +38,17 @@ class UserProfile {
       storageQuotaBytes! > 0 &&
       storageUsedBytes != null;
 
+  /// Sparfuchs. Paid plans such as `premium` and `premium_max` are false.
+  bool get isFreePlan {
+    switch (plan.trim().toLowerCase()) {
+      case 'free':
+      case 'sparfuchs':
+        return true;
+      default:
+        return false;
+    }
+  }
+
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     final limits = json['limits'] as Map<String, dynamic>?;
     final stats = json['stats'] as Map<String, dynamic>?;

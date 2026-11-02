@@ -109,16 +109,19 @@ class StorageUsageCard extends StatelessWidget {
                       color: scheme.onSurface,
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 6, bottom: 4),
-                    child: Text(
-                      s.ofQuota(formatBytes(quota)),
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: scheme.onSurface.withValues(alpha: 0.6),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 6, bottom: 4),
+                      child: Text(
+                        s.ofQuota(formatBytes(quota)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: scheme.onSurface.withValues(alpha: 0.6),
+                        ),
                       ),
                     ),
                   ),
-                  const Spacer(),
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
