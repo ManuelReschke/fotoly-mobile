@@ -5,6 +5,23 @@ import '../config/api_config.dart';
 import '../config/app_brand.dart';
 import '../l10n/l10n_scope.dart';
 
+/// Opens the brand pricing page. Shows a snackbar when the browser stays closed.
+Future<void> launchPricingPage(BuildContext context) async {
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  final message = context.l10nRead.premiumUpsellOpenFailed;
+  try {
+    final opened = await launchUrl(
+      ApiConfig.pricingUrl,
+      mode: LaunchMode.externalApplication,
+    );
+    if (!opened) {
+      messenger?.showSnackBar(SnackBar(content: Text(message)));
+    }
+  } catch (_) {
+    messenger?.showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
 /// Premium pitch shown under storage for free accounts only.
 class PremiumUpsellCard extends StatelessWidget {
   const PremiumUpsellCard({super.key, this.onPressed});
@@ -18,19 +35,7 @@ class PremiumUpsellCard extends StatelessWidget {
       action();
       return;
     }
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    final message = context.l10nRead.premiumUpsellOpenFailed;
-    try {
-      final opened = await launchUrl(
-        ApiConfig.pricingUrl,
-        mode: LaunchMode.externalApplication,
-      );
-      if (!opened) {
-        messenger?.showSnackBar(SnackBar(content: Text(message)));
-      }
-    } catch (_) {
-      messenger?.showSnackBar(SnackBar(content: Text(message)));
-    }
+    await launchPricingPage(context);
   }
 
   @override

@@ -13,6 +13,7 @@ class HomeWelcomeHeader extends StatelessWidget {
     required this.pendingCount,
     required this.securedCount,
     required this.hasFolders,
+    this.oversizedCount = 0,
     this.now,
   });
 
@@ -23,6 +24,9 @@ class HomeWelcomeHeader extends StatelessWidget {
   final int pendingCount;
   final int securedCount;
   final bool hasFolders;
+
+  /// Files that stay local because they exceed the current plan.
+  final int oversizedCount;
 
   /// Injectable clock for tests; defaults to [DateTime.now].
   final DateTime? now;
@@ -40,8 +44,9 @@ class HomeWelcomeHeader extends StatelessWidget {
       pendingCount: pendingCount,
       securedCount: securedCount,
       hasFolders: hasFolders,
+      oversizedCount: oversizedCount,
     );
-    final accent = pendingCount > 0
+    final accent = pendingCount > 0 || oversizedCount > 0
         ? AppTheme.foxOrange
         : securedCount > 0
         ? AppTheme.storageLow

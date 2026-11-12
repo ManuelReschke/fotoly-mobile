@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../l10n/backup_error_l10n.dart';
 import '../l10n/l10n_scope.dart';
 import '../models/backup_status.dart';
+import '../models/upload_size_policy.dart';
 import '../services/auth_service.dart';
 import '../services/backup_service.dart';
 import '../services/camera_folder.dart';
@@ -14,6 +15,7 @@ import '../theme/app_theme.dart';
 import '../widgets/backup_status_view.dart';
 import '../widgets/home_welcome_header.dart';
 import '../widgets/pixelfox_logo.dart';
+import '../widgets/premium_upsell_card.dart';
 import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -97,6 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     if (backup.pendingCount == 0) {
+      if (backup.tooLargeCount > 0) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -165,12 +168,30 @@ class _HomeScreenState extends State<HomeScreen> {
     final settings = context.watch<SettingsService>();
     final status = backup.status;
     final hasPending = backup.pendingCount > 0;
+    final offer = offerForOversizedFiles(backup.tooLargeImages);
+    final unlockPlan = !hasPending && !backup.running && offer.hasUpsell;
+    final blockedOnly =
+        !hasPending && backup.tooLargeCount > 0 && !offer.hasUpsell;
     final allSecured =
         settings.hasFolders &&
         backup.inventoryLoaded &&
         backup.allImages.isNotEmpty &&
         !hasPending &&
+        backup.tooLargeCount == 0 &&
         !backup.running;
+    final actionLabel = backup.running
+        ? s.backingUp
+        : hasPending
+        ? s.secureNewCount(backup.pendingCount)
+        : unlockPlan
+        ? (offer.plan == HigherUploadPlan.premiumMax
+              ? s.premiumMaxUpsellCta
+              : s.premiumUpsellCta)
+        : blockedOnly
+        ? s.tooLargeForEveryPlanButton
+        : allSecured
+        ? s.allSecuredButton
+        : s.startBackup;
 
     return Scaffold(
       appBar: AppBar(
@@ -204,6 +225,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   pendingCount: backup.pendingCount,
                   securedCount: backup.securedCount,
                   hasFolders: settings.hasFolders,
+                  oversizedCount: backup.tooLargeCount,
                 ),
                 const SizedBox(height: 16),
               ],
@@ -213,6 +235,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     final statusView = BackupStatusView(
                       status: status,
                       pending: backup.pendingImages,
+                      tooLarge: backup.tooLargeImages,
+                      maxUploadBytes: auth.profile?.maxUploadBytes,
+                      onUnlockPlan: () => launchPricingPage(context),
                       securedCount: backup.securedCount,
                       scanning: backup.scanning,
                       onSecureCamera: !settings.hasFolders && !backup.running
@@ -243,12 +268,13 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               if (settings.hasFolders) ...[
                 const SizedBox(height: 16),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: SizedBox(
-                        height: 56,
+                // Plan labels such as "Premium freischalten" wrap beside
+                // Reset. A fixed height clips the second line.
+                IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
                         child: FilledButton.icon(
                           style: FilledButton.styleFrom(
                             backgroundColor: allSecured
@@ -259,53 +285,60 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ? AppTheme.storageLow.withValues(alpha: 0.85)
                                 : null,
                             disabledForegroundColor: Colors.white,
+                            minimumSize: const Size(0, 56),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             textStyle: const TextStyle(
                               fontSize: 17,
+                              height: 1.15,
                               fontWeight: FontWeight.w700,
                             ),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
                           ),
-                          onPressed: backup.running
+                          onPressed: backup.running || blockedOnly
                               ? null
+                              : unlockPlan
+                              ? () => launchPricingPage(context)
                               : () => _onBackupPressed(backup, settings),
                           icon: Icon(
                             backup.running
                                 ? Icons.hourglass_top
+                                : unlockPlan
+                                ? Icons.workspace_premium_outlined
                                 : allSecured
                                 ? Icons.verified_outlined
                                 : Icons.backup_outlined,
                             size: 26,
                           ),
-                          label: Text(
-                            backup.running
-                                ? s.backingUp
-                                : hasPending
-                                ? s.secureNewCount(backup.pendingCount)
-                                : allSecured
-                                ? s.allSecuredButton
-                                : s.startBackup,
-                          ),
+                          label: Text(actionLabel, textAlign: TextAlign.center),
                         ),
                       ),
-                    ),
-                    if (status.isSuccess || status.phase.name == 'failed') ...[
-                      const SizedBox(width: 12),
-                      SizedBox(
-                        height: 56,
-                        child: OutlinedButton(
+                      if (status.isSuccess ||
+                          status.phase.name == 'failed') ...[
+                        const SizedBox(width: 12),
+                        OutlinedButton(
                           onPressed: backup.running ? null : backup.resetIdle,
                           style: OutlinedButton.styleFrom(
+                            minimumSize: const Size(0, 56),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
                           ),
                           child: Text(s.reset),
                         ),
-                      ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ],
             ],

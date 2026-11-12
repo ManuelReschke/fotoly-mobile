@@ -100,6 +100,8 @@ class _AuthenticatedShellState extends State<_AuthenticatedShell>
     _backup = BackupService(
       settings: settings,
       ledger: ledger,
+      maxUploadBytes: () => auth.profile?.maxUploadBytes,
+      planChanges: auth,
       clientProvider: () {
         final client = auth.client;
         if (client == null) {
@@ -153,6 +155,7 @@ class _AuthenticatedShellState extends State<_AuthenticatedShell>
     // Always re-check media access first (even when inventory is fresh) so a
     // grant in system settings is observed; only the scan itself is throttled.
     final settings = context.read<SettingsService>();
+    final auth = context.read<AuthService>();
     if (settings.hasFolders && MediaAccess.isRuntimePermissionRequired) {
       final result = await MediaAccess().ensureReadAccess();
       if (result == MediaAccessResult.denied ||
@@ -163,6 +166,11 @@ class _AuthenticatedShellState extends State<_AuthenticatedShell>
         return;
       }
     }
+    // A plan bought in the browser is invisible until the profile is reloaded.
+    // The scan below then moves files that fit the new cap back to pending.
+    await auth.refreshProfile();
+    if (!mounted) return;
+
     // quiet: never show “Looking for photos…” on resume.
     // throttle: skip if we just scanned successfully (failed scans do not
     // arm the throttle — see BackupService._performInventoryScan).

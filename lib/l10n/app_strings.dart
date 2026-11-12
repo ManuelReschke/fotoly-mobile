@@ -212,6 +212,7 @@ abstract class AppStrings {
     required int pendingCount,
     required int securedCount,
     required bool hasFolders,
+    int oversizedCount = 0,
   });
   String get tipPickFolders;
   String get backingUp;
@@ -247,6 +248,18 @@ abstract class AppStrings {
   String get almostFailedTitle;
   String get someUploadsFailed;
   String uploadSummary(int completed, int failed, int total);
+
+  /// Oversized files, with the current plan cap already formatted.
+  String photosLargerThanPlan(int count, String limit);
+
+  /// Oversized files when the plan cap is not known yet.
+  String photosTooLargeForPlan(int count);
+  String planUploadLimit(String limit);
+  String premiumUploadOffer(String limit);
+  String premiumMaxUploadOffer(String limit);
+  String photosBeyondEveryPlan(int count);
+  String get premiumMaxUpsellCta;
+  String get tooLargeForEveryPlanButton;
 
   // —— Settings / folders ——
   String get foldersToBackUp;

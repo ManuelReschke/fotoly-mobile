@@ -922,6 +922,151 @@ void main() {
     expect(notifies, greaterThan(afterFirst));
     backup.dispose();
   });
+
+  test(
+    'oversized files are not uploaded and return after a plan upgrade',
+    () async {
+      final settings = SettingsService(prefs: MemoryPrefsStore());
+      await settings.setFolders(['/photos']);
+      var limit = 25 * 1024 * 1024;
+      final fake = FakeApiHttp(
+        sessionStatus: 200,
+        sessionBody: sessionFixture,
+        uploadStatus: 200,
+        uploadBody: uploadFixture,
+      );
+      final backup = BackupService(
+        settings: settings,
+        scanner: FakeFileScanner([
+          const LocalImageFile(
+            path: '/photos/ok.jpg',
+            name: 'ok.jpg',
+            sizeBytes: 4,
+          ),
+          LocalImageFile(
+            path: '/photos/big.jpg',
+            name: 'big.jpg',
+            sizeBytes: limit + 1,
+          ),
+        ]),
+        ledger: BackupLedger(prefs: MemoryPrefsStore()),
+        clientProvider: () => PixelfoxApiClient(apiKey: 'k', httpClient: fake),
+        readBytes: (path) async => [1, 2, 3, 4],
+        maxUploadBytes: () => limit,
+      );
+
+      await backup.refreshInventory();
+      expect(backup.pendingImages.map((file) => file.name), ['ok.jpg']);
+      expect(backup.tooLargeImages.map((file) => file.name), ['big.jpg']);
+
+      final status = await backup.startBackup();
+      expect(status.failed, 0);
+      expect(status.completed, 1);
+      expect(fake.sent.whereType<http.MultipartRequest>(), hasLength(1));
+      expect(backup.tooLargeImages.map((file) => file.name), ['big.jpg']);
+      expect(backup.pendingCount, 0);
+
+      limit = 50 * 1024 * 1024;
+      await backup.refreshInventory(throttle: false);
+      expect(backup.tooLargeCount, 0);
+      expect(backup.pendingImages.map((file) => file.name), ['big.jpg']);
+      backup.dispose();
+    },
+  );
+
+  test('a session size rejection is not a failed upload', () async {
+    final settings = SettingsService(prefs: MemoryPrefsStore());
+    await settings.setFolders(['/photos']);
+    final session = sessionFixture.replaceFirst(
+      '"max_bytes": 52428800',
+      '"max_bytes": 3',
+    );
+    var limit = 50 * 1024 * 1024;
+    final fake = FakeApiHttp(
+      sessionStatus: 200,
+      sessionBody: session,
+      uploadStatus: 200,
+      uploadBody: uploadFixture,
+    );
+    final backup = BackupService(
+      settings: settings,
+      scanner: FakeFileScanner([
+        const LocalImageFile(
+          path: '/photos/big.jpg',
+          name: 'big.jpg',
+          sizeBytes: 100,
+        ),
+      ]),
+      ledger: BackupLedger(prefs: MemoryPrefsStore()),
+      clientProvider: () => PixelfoxApiClient(apiKey: 'k', httpClient: fake),
+      readBytes: (path) async => [1, 2, 3, 4],
+      maxUploadBytes: () => limit,
+    );
+
+    final status = await backup.startBackup();
+    expect(status.failed, 0);
+    expect(status.phase, BackupPhase.idle);
+    expect(backup.tooLargeImages.single.name, 'big.jpg');
+    expect(backup.pendingCount, 0);
+    final requests = fake.sent.length;
+    expect(requests, 1);
+
+    await backup.startBackup();
+    expect(fake.sent.length, requests);
+
+    limit += 1;
+    await backup.refreshInventory(throttle: false);
+    expect(backup.pendingCount, 1);
+    expect(backup.tooLargeCount, 0);
+    backup.dispose();
+  });
+
+  test(
+    'a ceiling captured against a stale higher plan clears on a middle tier',
+    () async {
+      final settings = SettingsService(prefs: MemoryPrefsStore());
+      await settings.setFolders(['/photos']);
+      // Same shape as a stale 100 MiB cache, a 25 MiB server cap, and a
+      // 40 MiB file that fits the later 50 MiB plan. Small numbers keep the
+      // test off a real 25 MiB buffer: readBytes is what the client measures.
+      final session = sessionFixture.replaceFirst(
+        '"max_bytes": 52428800',
+        '"max_bytes": 3',
+      );
+      var limit = 1000;
+      final fake = FakeApiHttp(
+        sessionStatus: 200,
+        sessionBody: session,
+        uploadStatus: 200,
+        uploadBody: uploadFixture,
+      );
+      final backup = BackupService(
+        settings: settings,
+        scanner: FakeFileScanner([
+          const LocalImageFile(
+            path: '/photos/mid.jpg',
+            name: 'mid.jpg',
+            sizeBytes: 100,
+          ),
+        ]),
+        ledger: BackupLedger(prefs: MemoryPrefsStore()),
+        clientProvider: () => PixelfoxApiClient(apiKey: 'k', httpClient: fake),
+        readBytes: (path) async => [1, 2, 3, 4],
+        maxUploadBytes: () => limit,
+      );
+
+      final status = await backup.startBackup();
+      expect(status.failed, 0);
+      expect(backup.tooLargeImages.single.name, 'mid.jpg');
+
+      // Middle tier fits the file, but it is still below the stale snapshot.
+      limit = 200;
+      await backup.refreshInventory(throttle: false);
+      expect(backup.pendingImages.map((file) => file.name), ['mid.jpg']);
+      expect(backup.tooLargeCount, 0);
+      backup.dispose();
+    },
+  );
 }
 
 class _CountingPrefs implements PrefsStore {

@@ -297,6 +297,126 @@ void main() {
     expect(find.byType(Image), findsOneWidget);
   });
 
+  testWidgets('oversized photos offer Premium instead of staying pending', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(400, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    var taps = 0;
+    await pumpL10n(
+      tester,
+      locale: AppLocale.de,
+      BackupStatusView(
+        status: BackupStatus.idle,
+        securedCount: 4,
+        maxUploadBytes: 25 * 1024 * 1024,
+        onUnlockPlan: () => taps++,
+        tooLarge: [
+          LocalImageFile(
+            path: '/p/collage.jpg',
+            name: 'collage.jpg',
+            sizeBytes: 30 * 1024 * 1024,
+          ),
+        ],
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('1 Foto ist größer als 25 MB'), findsOneWidget);
+    expect(
+      find.text('Dein Tarif erlaubt maximal 25 MB pro Datei.'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Mit Premium gehen bis zu 50 MB pro Foto.'),
+      findsOneWidget,
+    );
+    expect(find.text('30 MB'), findsOneWidget);
+    expect(find.textContaining('noch nicht gesichert'), findsNothing);
+    await tester.tap(find.text('Premium freischalten'));
+    expect(taps, 1);
+  });
+
+  testWidgets('photos above every plan do not offer an upgrade', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(400, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await pumpL10n(
+      tester,
+      locale: AppLocale.de,
+      BackupStatusView(
+        status: BackupStatus.idle,
+        maxUploadBytes: 25 * 1024 * 1024,
+        onUnlockPlan: () {},
+        tooLarge: [
+          LocalImageFile(
+            path: '/p/huge.jpg',
+            name: 'huge.jpg',
+            sizeBytes: 100 * 1024 * 1024 + 1,
+          ),
+        ],
+      ),
+    );
+    await tester.pump();
+
+    expect(
+      find.text(
+        '1 Foto ist auch für Premium Max zu groß. Exportiere es kleiner.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Premium freischalten'), findsNothing);
+    expect(find.text('Premium Max freischalten'), findsNothing);
+  });
+
+  testWidgets('pending and oversized photos fit a short home slot', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(360, 640));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await pumpL10n(
+      tester,
+      locale: AppLocale.de,
+      const SizedBox(
+        height: 240,
+        child: BackupStatusView(
+          status: BackupStatus.idle,
+          maxUploadBytes: 25 * 1024 * 1024,
+          pending: [
+            LocalImageFile(
+              path: '/p/soon.jpg',
+              name: 'soon.jpg',
+              sizeBytes: 1024,
+            ),
+          ],
+          tooLarge: [
+            LocalImageFile(
+              path: '/p/big.jpg',
+              name: 'big.jpg',
+              sizeBytes: 30 * 1024 * 1024,
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('1 Foto noch nicht gesichert'), findsOneWidget);
+
+    // The pending preview is taller than this slot. Drag the title so the
+    // list scrolls; a drag on the grid would move the thumbnails instead.
+    await tester.drag(
+      find.text('1 Foto noch nicht gesichert'),
+      const Offset(0, -800),
+    );
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('1 Foto ist größer als 25 MB'), findsOneWidget);
+  });
+
   testWidgets('appearance card lists three modes and selects Dark', (
     tester,
   ) async {

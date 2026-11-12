@@ -629,6 +629,7 @@ class AppStringsDe extends AppStrings {
     required int pendingCount,
     required int securedCount,
     required bool hasFolders,
+    int oversizedCount = 0,
   }) {
     if (!hasFolders) return 'Bereit für deinen ersten Backup-Lauf';
     if (pendingCount > 0) {
@@ -636,6 +637,7 @@ class AppStringsDe extends AppStrings {
           ? '1 Foto wartet auf den Fuchsbau'
           : '$pendingCount Fotos warten auf den Fuchsbau';
     }
+    if (oversizedCount > 0) return photosTooLargeForPlan(oversizedCount);
     if (securedCount > 0) return 'Alles ruhig im Bau — alles ist aktuell';
     return 'Ordner sind gewählt — warte auf Fotos';
   }
@@ -732,6 +734,39 @@ class AppStringsDe extends AppStrings {
   @override
   String uploadSummary(int completed, int failed, int total) =>
       '$completed gesichert · $failed fehlgeschlagen · $total gesamt';
+
+  @override
+  String photosLargerThanPlan(int count, String limit) => count == 1
+      ? '1 Foto ist größer als $limit'
+      : '$count Fotos sind größer als $limit';
+
+  @override
+  String photosTooLargeForPlan(int count) => count == 1
+      ? '1 Foto ist zu groß für deinen Tarif'
+      : '$count Fotos sind zu groß für deinen Tarif';
+
+  @override
+  String planUploadLimit(String limit) =>
+      'Dein Tarif erlaubt maximal $limit pro Datei.';
+
+  @override
+  String premiumUploadOffer(String limit) =>
+      'Mit Premium gehen bis zu $limit pro Foto.';
+
+  @override
+  String premiumMaxUploadOffer(String limit) =>
+      'Mit Premium Max gehen bis zu $limit pro Foto.';
+
+  @override
+  String photosBeyondEveryPlan(int count) => count == 1
+      ? '1 Foto ist auch für Premium Max zu groß. Exportiere es kleiner.'
+      : '$count Fotos sind auch für Premium Max zu groß. Exportiere sie kleiner.';
+
+  @override
+  String get premiumMaxUpsellCta => 'Premium Max freischalten';
+
+  @override
+  String get tooLargeForEveryPlanButton => 'Für keinen Tarif klein genug';
 
   @override
   String get foldersToBackUp => 'Ordner zum Sichern';

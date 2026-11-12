@@ -4,6 +4,7 @@ import '../config/app_brand.dart';
 import '../l10n/backup_error_l10n.dart';
 import '../l10n/l10n_scope.dart';
 import '../models/backup_status.dart';
+import '../models/upload_size_policy.dart';
 import '../services/file_scanner.dart';
 import '../theme/app_theme.dart';
 import 'local_file_thumbnail.dart';
@@ -22,6 +23,9 @@ class BackupStatusView extends StatelessWidget {
     super.key,
     required this.status,
     this.pending = const [],
+    this.tooLarge = const [],
+    this.maxUploadBytes,
+    this.onUnlockPlan,
     this.securedCount = 0,
     this.scanning = false,
     this.onSecureCamera,
@@ -31,6 +35,16 @@ class BackupStatusView extends StatelessWidget {
 
   final BackupStatus status;
   final List<LocalImageFile> pending;
+
+  /// Files the current plan will not accept. Kept out of [pending].
+  final List<LocalImageFile> tooLarge;
+
+  /// Profile cap used in the oversized copy. Null hides the number.
+  final int? maxUploadBytes;
+
+  /// Opens the pricing page for Premium or Premium Max.
+  final VoidCallback? onUnlockPlan;
+
   final int securedCount;
   final bool scanning;
 
@@ -50,7 +64,7 @@ class BackupStatusView extends StatelessWidget {
       switchInCurve: Curves.easeOutBack,
       child: KeyedSubtree(
         key: ValueKey(
-          '${status.phase}-${pending.length}-$securedCount-$scanning',
+          '${status.phase}-${pending.length}-${tooLarge.length}-$securedCount-$scanning',
         ),
         child: _buildForPhase(context),
       ),
@@ -58,29 +72,49 @@ class BackupStatusView extends StatelessWidget {
   }
 
   Widget _buildForPhase(BuildContext context) {
-    switch (status.phase) {
-      case BackupPhase.working:
-        return _WorkingHero(status: status);
-      case BackupPhase.success:
-        return _SuccessHero(status: status);
-      case BackupPhase.failed:
-        return _FailedHero(status: status);
-      case BackupPhase.idle:
-        return _IdleHero(
-          pending: pending,
-          securedCount: securedCount,
-          scanning: scanning,
-          onSecureCamera: onSecureCamera,
-          securingCamera: securingCamera,
-          onChooseFolders: onChooseFolders,
-        );
+    final hero = switch (status.phase) {
+      BackupPhase.working => _WorkingHero(status: status),
+      BackupPhase.success => _SuccessHero(status: status),
+      BackupPhase.failed => _FailedHero(status: status),
+      BackupPhase.idle => _IdleHero(
+        pending: pending,
+        tooLarge: tooLarge,
+        maxUploadBytes: maxUploadBytes,
+        onUnlockPlan: onUnlockPlan,
+        securedCount: securedCount,
+        scanning: scanning,
+        onSecureCamera: onSecureCamera,
+        securingCamera: securingCamera,
+        onChooseFolders: onChooseFolders,
+      ),
+    };
+    if (tooLarge.isEmpty ||
+        status.phase == BackupPhase.working ||
+        status.phase == BackupPhase.idle) {
+      return hero;
     }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        hero,
+        const SizedBox(height: 12),
+        _OversizedBackupCard(
+          files: tooLarge,
+          maxUploadBytes: maxUploadBytes,
+          onUnlockPlan: onUnlockPlan,
+          showGrid: false,
+        ),
+      ],
+    );
   }
 }
 
 class _IdleHero extends StatelessWidget {
   const _IdleHero({
     required this.pending,
+    required this.tooLarge,
+    required this.maxUploadBytes,
+    required this.onUnlockPlan,
     required this.securedCount,
     required this.scanning,
     this.onSecureCamera,
@@ -89,6 +123,9 @@ class _IdleHero extends StatelessWidget {
   });
 
   final List<LocalImageFile> pending;
+  final List<LocalImageFile> tooLarge;
+  final int? maxUploadBytes;
+  final VoidCallback? onUnlockPlan;
   final int securedCount;
   final bool scanning;
   final VoidCallback? onSecureCamera;
@@ -115,8 +152,47 @@ class _IdleHero extends StatelessWidget {
       );
     }
 
+    if (pending.isNotEmpty && tooLarge.isNotEmpty) {
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final pendingHero = _PendingHero(
+            pending: pending,
+            securedCount: securedCount,
+          );
+          final oversized = _OversizedBackupCard(
+            files: tooLarge,
+            maxUploadBytes: maxUploadBytes,
+            onUnlockPlan: onUnlockPlan,
+            showGrid: false,
+          );
+          // A scroll view above us already gives infinite height. A fixed
+          // home slot does not, and the card used to overflow that slot.
+          if (!constraints.maxHeight.isFinite) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [pendingHero, const SizedBox(height: 12), oversized],
+            );
+          }
+          return ListView(
+            primary: false,
+            padding: EdgeInsets.zero,
+            children: [pendingHero, const SizedBox(height: 12), oversized],
+          );
+        },
+      );
+    }
+
     if (pending.isNotEmpty) {
       return _PendingHero(pending: pending, securedCount: securedCount);
+    }
+
+    if (tooLarge.isNotEmpty) {
+      return _OversizedBackupCard(
+        files: tooLarge,
+        maxUploadBytes: maxUploadBytes,
+        onUnlockPlan: onUnlockPlan,
+        showGrid: true,
+      );
     }
 
     if (securedCount > 0) {
@@ -338,10 +414,115 @@ double _unboundedPreviewHeight(BuildContext context) {
   return slot;
 }
 
-class _PendingThumbGrid extends StatefulWidget {
-  const _PendingThumbGrid({required this.files});
+class _OversizedBackupCard extends StatelessWidget {
+  const _OversizedBackupCard({
+    required this.files,
+    required this.maxUploadBytes,
+    required this.onUnlockPlan,
+    required this.showGrid,
+  });
 
   final List<LocalImageFile> files;
+  final int? maxUploadBytes;
+  final VoidCallback? onUnlockPlan;
+  final bool showGrid;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.l10n;
+    final offer = offerForOversizedFiles(files);
+    final limit = maxUploadBytes;
+    final limitLabel = limit == null || limit <= 0
+        ? null
+        : formatUploadLimit(limit);
+    final title = limitLabel == null
+        ? s.photosTooLargeForPlan(files.length)
+        : s.photosLargerThanPlan(files.length, limitLabel);
+    final lines = <String>[
+      if (limitLabel != null) s.planUploadLimit(limitLabel),
+      if (offer.plan == HigherUploadPlan.premium)
+        s.premiumUploadOffer(formatUploadLimit(kPremiumUploadBytes)),
+      if (offer.plan == HigherUploadPlan.premiumMax)
+        s.premiumMaxUploadOffer(formatUploadLimit(kPremiumMaxUploadBytes)),
+      if (offer.beyondEveryPlan > 0)
+        s.photosBeyondEveryPlan(offer.beyondEveryPlan),
+    ];
+    final scheme = Theme.of(context).colorScheme;
+    final copy = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w800,
+            color: scheme.onSurface,
+          ),
+        ),
+        for (final line in lines) ...[
+          const SizedBox(height: 6),
+          Text(
+            line,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: scheme.onSurface.withValues(alpha: 0.8),
+            ),
+          ),
+        ],
+        if (offer.hasUpsell && onUnlockPlan != null)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              onPressed: onUnlockPlan,
+              child: Text(
+                offer.plan == HigherUploadPlan.premiumMax
+                    ? s.premiumMaxUpsellCta
+                    : s.premiumUpsellCta,
+              ),
+            ),
+          ),
+      ],
+    );
+    final gradient = _heroColors(
+      context,
+      const [Color(0xFFFFF3D6), Color(0xFFFFE0B2)],
+      const [Color(0xFF3A2E1B), Color(0xFF2C2418)],
+    );
+    if (!showGrid) {
+      return _HeroCard(gradient: gradient, child: copy);
+    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final expand = constraints.maxHeight.isFinite;
+        return _HeroCard(
+          expand: expand,
+          gradient: gradient,
+          child: Column(
+            mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              copy,
+              const SizedBox(height: 12),
+              if (expand)
+                Expanded(
+                  child: _PendingThumbGrid(files: files, showSizes: true),
+                )
+              else
+                SizedBox(
+                  height: _unboundedPreviewHeight(context),
+                  child: _PendingThumbGrid(files: files, showSizes: true),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _PendingThumbGrid extends StatefulWidget {
+  const _PendingThumbGrid({required this.files, this.showSizes = false});
+
+  final List<LocalImageFile> files;
+  final bool showSizes;
 
   @override
   State<_PendingThumbGrid> createState() => _PendingThumbGridState();
@@ -390,6 +571,7 @@ class _PendingThumbGridState extends State<_PendingThumbGrid> {
                 key: ValueKey(file.path),
                 file: file,
                 cacheWidth: cacheWidth,
+                showSize: widget.showSizes,
               );
             },
           ),
@@ -404,22 +586,53 @@ class _PendingThumb extends StatelessWidget {
     super.key,
     required this.file,
     required this.cacheWidth,
+    this.showSize = false,
   });
 
   final LocalImageFile file;
   final int cacheWidth;
+  final bool showSize;
 
   @override
   Widget build(BuildContext context) {
+    final sizeLabel = formatUploadLimit(file.sizeBytes);
+    final thumb = ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: LocalFileThumbnail(path: file.path, cacheWidth: cacheWidth),
+    );
     return Tooltip(
-      message: file.name,
+      message: showSize ? '${file.name} · $sizeLabel' : file.name,
       child: Semantics(
-        label: file.name,
+        label: showSize ? '${file.name}, $sizeLabel' : file.name,
         image: true,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: LocalFileThumbnail(path: file.path, cacheWidth: cacheWidth),
-        ),
+        child: showSize
+            ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  thumb,
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: ColoredBox(
+                      color: const Color(0xCC000000),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text(
+                          sizeLabel,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : thumb,
       ),
     );
   }

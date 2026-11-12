@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../models/backup_status.dart';
 import '../models/full_sync_result.dart';
 import '../models/upload_result.dart';
+import '../models/upload_size_policy.dart';
 import 'backup_errors.dart';
 import 'backup_ledger.dart';
 import 'file_scanner.dart';
@@ -39,8 +40,12 @@ class BackupService extends ChangeNotifier {
     this.ledgerFlushStride = kLedgerFlushStride,
     this._autoScanInterval = kDefaultAutoScanInterval,
     this.minAutoInventoryInterval = kMinAutoInventoryInterval,
+    this.maxUploadBytes,
+    this._planChanges,
   }) : _scanner = scanner ?? IoFileScanner() {
+    _seenPlanMax = maxUploadBytes?.call();
     _settings.addListener(_onSettingsChanged);
+    _planChanges?.addListener(_onPlanChanged);
   }
 
   final SettingsService _settings;
@@ -49,6 +54,17 @@ class BackupService extends ChangeNotifier {
   final FileScanner _scanner;
   final FileBytesReader? readBytes;
   final Duration _autoScanInterval;
+
+  /// Current plan cap from the profile. Null means the limit is not known yet.
+  final int? Function()? maxUploadBytes;
+
+  final Listenable? _planChanges;
+  int? _seenPlanMax;
+
+  /// Files the server rejected for size while the profile cap was stale or missing.
+  final Set<String> _blockedFingerprints = {};
+  int? _blockedAtProfileMax;
+  int? _serverCeiling;
 
   /// Ledger prefs rewrite after this many uploads or removals, and always when
   /// a backup or full sync finishes.
@@ -71,6 +87,7 @@ class BackupService extends ChangeNotifier {
 
   List<LocalImageFile> _allImages = [];
   List<LocalImageFile> _pending = [];
+  List<LocalImageFile> _tooLarge = [];
   List<LocalImageFile> _alreadySecured = [];
   bool _inventoryLoaded = false;
 
@@ -125,14 +142,18 @@ class BackupService extends ChangeNotifier {
   /// All images currently under selected folders.
   List<LocalImageFile> get allImages => List.unmodifiable(_allImages);
 
-  /// Images not yet uploaded (or changed size since last upload).
+  /// Images not yet uploaded that still fit the current plan.
   List<LocalImageFile> get pendingImages => List.unmodifiable(_pending);
+
+  /// Images the current plan will not accept. They are not pending.
+  List<LocalImageFile> get tooLargeImages => List.unmodifiable(_tooLarge);
 
   /// Images that match a ledger entry (path + size).
   List<LocalImageFile> get alreadySecuredImages =>
       List.unmodifiable(_alreadySecured);
 
   int get pendingCount => _pending.length;
+  int get tooLargeCount => _tooLarge.length;
   int get securedCount => _alreadySecured.length;
 
   BackupStatus get status => deriveBackupStatus(
@@ -151,12 +172,21 @@ class BackupService extends ChangeNotifier {
   void dispose() {
     stopAutoScan();
     _settings.removeListener(_onSettingsChanged);
+    _planChanges?.removeListener(_onPlanChanged);
     super.dispose();
   }
 
   void _onSettingsChanged() {
     // Fire-and-forget rescan when folders change (user-visible).
     unawaited(refreshInventory());
+  }
+
+  void _onPlanChanged() {
+    final next = maxUploadBytes?.call();
+    if (next == _seenPlanMax) return;
+    _seenPlanMax = next;
+    if (_running) return;
+    unawaited(refreshInventory(quiet: true, throttle: false));
   }
 
   /// Start periodic folder scans while the app is open (default every 30s).
@@ -302,6 +332,7 @@ class BackupService extends ChangeNotifier {
     if (_showScanningUi) notifyListeners();
 
     final prevPending = _fingerprintList(_pending);
+    final prevTooLarge = _fingerprintList(_tooLarge);
     final prevSecured = _fingerprintList(_alreadySecured);
     final prevError = _errorMessage;
     final wasShowingUi = _showScanningUi;
@@ -312,14 +343,13 @@ class BackupService extends ChangeNotifier {
       if (folders.isEmpty) {
         _allImages = [];
         _pending = [];
+        _tooLarge = [];
         _alreadySecured = [];
       } else {
         final all = await _scanner.scan(folders);
         // Backup may have started while we awaited the scanner — discard.
         if (_running) return;
-        _allImages = all;
-        _pending = _ledger.pendingOf(all);
-        _alreadySecured = _ledger.alreadyOf(all);
+        _applyInventory(all);
       }
       _inventoryLoaded = true;
       // Clear sticky inventory / prior job errors after a successful scan.
@@ -338,6 +368,7 @@ class BackupService extends ChangeNotifier {
       }
       final changed =
           prevPending != _fingerprintList(_pending) ||
+          prevTooLarge != _fingerprintList(_tooLarge) ||
           prevSecured != _fingerprintList(_alreadySecured) ||
           prevError != _errorMessage;
       // Always notify when we had shown the spinner (to clear it), or when
@@ -371,6 +402,72 @@ class BackupService extends ChangeNotifier {
     hash ^= value & 0x7fffffff;
     hash = (hash * 0x01000193) & 0x7fffffff;
     return hash;
+  }
+
+  /// Profile cap, tightened by a server rejection until that cap changes.
+  int? _effectiveMaxUploadBytes() {
+    _releaseIfPlanGrew();
+    final profile = maxUploadBytes?.call();
+    final server = _serverCeiling;
+    if (profile == null || profile <= 0) return server;
+    if (server == null || server <= 0) return profile;
+    return profile < server ? profile : server;
+  }
+
+  void _releaseIfPlanGrew() {
+    final profile = maxUploadBytes?.call();
+    final blockedAt = _blockedAtProfileMax;
+    // A later plan can sit below the snapshot taken at the rejection.
+    if (profile != null &&
+        profile > 0 &&
+        blockedAt != null &&
+        profile != blockedAt) {
+      _blockedFingerprints.clear();
+      _serverCeiling = null;
+      _blockedAtProfileMax = null;
+      return;
+    }
+    if (profile == null || profile <= 0 || blockedAt != null) return;
+    _blockedFingerprints.removeWhere((fingerprint) {
+      final size = _sizeFromFingerprint(fingerprint);
+      return size != null && size <= profile;
+    });
+    // The rejection landed before the profile existed. A higher plan wins.
+    final server = _serverCeiling;
+    if (server != null && profile > server) {
+      _serverCeiling = null;
+    }
+  }
+
+  int? _sizeFromFingerprint(String fingerprint) {
+    final index = fingerprint.lastIndexOf('::');
+    if (index < 0) return null;
+    return int.tryParse(fingerprint.substring(index + 2));
+  }
+
+  void _noteTooLarge(LocalImageFile file, Object error) {
+    _blockedFingerprints.add(fingerprintFor(file));
+    _blockedAtProfileMax ??= maxUploadBytes?.call();
+    final reported = maxBytesFromUploadError(error);
+    if (reported != null && reported > 0) {
+      final current = _serverCeiling;
+      if (current == null || reported < current) {
+        _serverCeiling = reported;
+      }
+    }
+  }
+
+  void _applyInventory(List<LocalImageFile> all) {
+    _allImages = all;
+    final groups = splitBackupFiles(
+      files: all,
+      isBackedUp: _ledger.isBackedUp,
+      maxUploadBytes: _effectiveMaxUploadBytes(),
+      isBlocked: (file) => _blockedFingerprints.contains(fingerprintFor(file)),
+    );
+    _pending = groups.pending;
+    _tooLarge = groups.tooLarge;
+    _alreadySecured = groups.secured;
   }
 
   Future<void> _noteLedgerChange() async {
@@ -545,10 +642,8 @@ class BackupService extends ChangeNotifier {
     try {
       // Always rescan so new files appear before the run.
       final all = await _scanner.scan(folders);
-      _allImages = all;
-      final pending = _ledger.pendingOf(all);
-      _pending = pending;
-      _alreadySecured = _ledger.alreadyOf(all);
+      _applyInventory(all);
+      final pending = List<LocalImageFile>.of(_pending);
       _total = pending.length;
       notifyListeners();
 
@@ -591,11 +686,16 @@ class BackupService extends ChangeNotifier {
           _completed++;
           uploaded = true;
           // Keep pending list roughly in sync for UI mid-run.
-          _pending = _ledger.pendingOf(_allImages);
-          _alreadySecured = _ledger.alreadyOf(_allImages);
+          _applyInventory(_allImages);
         } catch (e) {
-          _failed++;
-          _failedPaths.add(file.path);
+          if (isUploadTooLargeError(e)) {
+            _noteTooLarge(file, e);
+            _applyInventory(_allImages);
+            if (_total > 0) _total--;
+          } else {
+            _failed++;
+            _failedPaths.add(file.path);
+          }
         }
         if (uploaded) await _noteLedgerChange();
         notifyListeners();
