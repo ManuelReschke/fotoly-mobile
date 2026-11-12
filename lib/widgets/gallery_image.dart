@@ -51,6 +51,7 @@ class GalleryImage extends StatelessWidget {
     this.originalBytes,
     this.thumbBytes,
     this.preview = true,
+    this.onUnavailable,
   });
 
   final String url;
@@ -64,6 +65,9 @@ class GalleryImage extends StatelessWidget {
 
   /// When false, [memCacheWidth] only caps the decoded original.
   final bool preview;
+
+  /// Called when [url] cannot be shown. A cover uses this to try another URL.
+  final VoidCallback? onUnavailable;
 
   @override
   Widget build(BuildContext context) {
@@ -79,6 +83,7 @@ class GalleryImage extends StatelessWidget {
         memCacheWidth: memCacheWidth,
         memCacheHeight: memCacheHeight,
         errorLabel: errorLabel,
+        onUnavailable: onUnavailable,
         originals:
             originalBytes ?? _CacheManagerByteCache(cache, download: true),
         thumbs:
@@ -92,6 +97,7 @@ class GalleryImage extends StatelessWidget {
       memCacheWidth: memCacheWidth,
       memCacheHeight: memCacheHeight,
       errorLabel: errorLabel,
+      onUnavailable: onUnavailable,
       cacheManager: cache,
     );
   }
@@ -145,6 +151,7 @@ class _GalleryThumbImage extends StatefulWidget {
     required this.memCacheWidth,
     required this.memCacheHeight,
     required this.errorLabel,
+    required this.onUnavailable,
     required this.originals,
     required this.thumbs,
     required this.networkCache,
@@ -155,6 +162,7 @@ class _GalleryThumbImage extends StatefulWidget {
   final int? memCacheWidth;
   final int? memCacheHeight;
   final String? errorLabel;
+  final VoidCallback? onUnavailable;
   final GalleryByteCache originals;
   final GalleryByteCache thumbs;
   final BaseCacheManager networkCache;
@@ -197,7 +205,13 @@ class _GalleryThumbImageState extends State<_GalleryThumbImage> {
       setState(() => _bytes = cached);
       return;
     }
-    setState(() => _showOriginal = true);
+    // A caller with a fallback must not paint the network image of a URL
+    // that is about to 404. Gallery tiles still show it while the thumb
+    // is encoded.
+    final notify = widget.onUnavailable;
+    if (notify == null) {
+      setState(() => _showOriginal = true);
+    }
     final made = await materializeGalleryThumb(
       url: url,
       originals: widget.originals,
@@ -207,6 +221,10 @@ class _GalleryThumbImageState extends State<_GalleryThumbImage> {
     if (!mounted || request != _request) return;
     if (made != null && made.isNotEmpty) {
       setState(() => _bytes = made);
+      return;
+    }
+    if (notify != null) {
+      notify();
     }
   }
 
@@ -222,8 +240,13 @@ class _GalleryThumbImageState extends State<_GalleryThumbImage> {
         cacheWidth: widget.memCacheWidth,
         cacheHeight: widget.memCacheHeight,
         gaplessPlayback: true,
-        errorBuilder: (context, error, stackTrace) =>
-            _galleryImageError(context, widget.errorLabel),
+        errorBuilder: (context, error, stackTrace) {
+          if (widget.onUnavailable != null) {
+            _reportUnavailable(widget.onUnavailable);
+            return _galleryPlaceholder(context);
+          }
+          return _galleryImageError(context, widget.errorLabel);
+        },
       );
     }
     if (_showOriginal) {
@@ -233,6 +256,7 @@ class _GalleryThumbImageState extends State<_GalleryThumbImage> {
         memCacheWidth: widget.memCacheWidth,
         memCacheHeight: widget.memCacheHeight,
         errorLabel: widget.errorLabel,
+        onUnavailable: widget.onUnavailable,
         cacheManager: widget.networkCache,
       );
     }
@@ -248,6 +272,7 @@ Widget _networkGalleryImage({
   required int? memCacheWidth,
   required int? memCacheHeight,
   required String? errorLabel,
+  required VoidCallback? onUnavailable,
   required BaseCacheManager cacheManager,
 }) {
   return CachedNetworkImage(
@@ -258,12 +283,26 @@ Widget _networkGalleryImage({
     height: double.infinity,
     memCacheWidth: memCacheWidth,
     memCacheHeight: memCacheHeight,
-    placeholder: (context, url) => ColoredBox(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-    ),
-    errorWidget: (context, url, error) =>
-        _galleryImageError(context, errorLabel),
+    placeholder: (context, url) => _galleryPlaceholder(context),
+    errorWidget: (context, url, error) {
+      if (onUnavailable != null) {
+        _reportUnavailable(onUnavailable);
+        return _galleryPlaceholder(context);
+      }
+      return _galleryImageError(context, errorLabel);
+    },
   );
+}
+
+Widget _galleryPlaceholder(BuildContext context) {
+  return ColoredBox(
+    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+  );
+}
+
+void _reportUnavailable(VoidCallback? onUnavailable) {
+  if (onUnavailable == null) return;
+  WidgetsBinding.instance.addPostFrameCallback((_) => onUnavailable());
 }
 
 Widget _galleryImageError(BuildContext context, String? errorLabel) {

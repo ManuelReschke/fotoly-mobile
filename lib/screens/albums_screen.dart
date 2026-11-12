@@ -9,6 +9,7 @@ import '../models/pixelfox_album.dart';
 import '../services/album_service.dart';
 import '../services/backup_service.dart';
 import '../services/gallery_service.dart';
+import '../widgets/album_cover.dart';
 import '../widgets/album_editor_sheet.dart';
 import '../widgets/gallery_image.dart';
 import '../widgets/pixelfox_logo.dart';
@@ -224,12 +225,16 @@ class _AlbumsScreenState extends State<AlbumsScreen> {
     }
     final url = ApiConfig.absolute(raw)?.toString() ?? raw;
     final builder = widget.imageBuilder;
-    final image = builder != null
-        ? builder(url: url, fit: BoxFit.cover)
-        : GalleryImage(url: url, fit: BoxFit.cover);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: SizedBox(width: 56, height: 56, child: image),
-    );
+    if (builder != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: SizedBox(
+          width: 56,
+          height: 56,
+          child: builder(url: url, fit: BoxFit.cover),
+        ),
+      );
+    }
+    return AlbumCoverImage(url: url);
   }
 }
