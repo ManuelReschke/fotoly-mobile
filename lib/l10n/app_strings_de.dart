@@ -698,6 +698,12 @@ class AppStringsDe extends AppStrings {
   String onePhotoNotYetSecured() => '1 Foto noch nicht gesichert';
 
   @override
+  String get openPhotoPreview => 'Foto groß ansehen';
+
+  @override
+  String get closePhotoPreview => 'Vorschau schließen';
+
+  @override
   String alreadySafeOnPixelfox(int securedCount) =>
       '$securedCount bereits sicher auf ${AppBrand.current.displayName}';
 

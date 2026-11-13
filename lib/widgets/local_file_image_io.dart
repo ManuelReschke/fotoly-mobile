@@ -9,6 +9,8 @@ Widget localFileImage({
   required String path,
   required int cacheWidth,
   required Widget placeholder,
+  BoxFit fit = BoxFit.cover,
+  FilterQuality filterQuality = FilterQuality.low,
 }) {
   final file = File(path);
   try {
@@ -18,11 +20,11 @@ Widget localFileImage({
   }
   return Image.file(
     file,
-    fit: BoxFit.cover,
+    fit: fit,
     width: double.infinity,
     height: double.infinity,
     cacheWidth: cacheWidth,
-    filterQuality: FilterQuality.low,
+    filterQuality: filterQuality,
     gaplessPlayback: true,
     frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
       if (wasSynchronouslyLoaded || frame != null) return child;

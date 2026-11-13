@@ -56,3 +56,6 @@ android/key.properties
 
 # Local git worktrees
 .worktrees/
+
+# Generated codebase-memory index
+.codebase-memory/

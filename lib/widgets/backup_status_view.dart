@@ -6,6 +6,7 @@ import '../l10n/l10n_scope.dart';
 import '../models/backup_status.dart';
 import '../models/upload_size_policy.dart';
 import '../services/file_scanner.dart';
+import '../screens/local_file_viewer.dart';
 import '../theme/app_theme.dart';
 import 'local_file_thumbnail.dart';
 
@@ -572,6 +573,11 @@ class _PendingThumbGridState extends State<_PendingThumbGrid> {
                 file: file,
                 cacheWidth: cacheWidth,
                 showSize: widget.showSizes,
+                onTap: () => LocalFileViewer.open(
+                  context,
+                  files: widget.files,
+                  initialIndex: index,
+                ),
               );
             },
           ),
@@ -587,52 +593,66 @@ class _PendingThumb extends StatelessWidget {
     required this.file,
     required this.cacheWidth,
     this.showSize = false,
+    this.onTap,
   });
 
   final LocalImageFile file;
   final int cacheWidth;
   final bool showSize;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final s = context.l10n;
     final sizeLabel = formatUploadLimit(file.sizeBytes);
+    final label = showSize ? '${file.name}, $sizeLabel' : file.name;
     final thumb = ClipRRect(
       borderRadius: BorderRadius.circular(8),
       child: LocalFileThumbnail(path: file.path, cacheWidth: cacheWidth),
     );
-    return Tooltip(
-      message: showSize ? '${file.name} · $sizeLabel' : file.name,
-      child: Semantics(
-        label: showSize ? '${file.name}, $sizeLabel' : file.name,
-        image: true,
-        child: showSize
-            ? Stack(
-                fit: StackFit.expand,
-                children: [
-                  thumb,
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: ColoredBox(
-                      color: const Color(0xCC000000),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 2),
-                        child: Text(
-                          sizeLabel,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
+    final preview = showSize
+        ? Stack(
+            fit: StackFit.expand,
+            children: [
+              thumb,
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: ColoredBox(
+                  color: const Color(0xCC000000),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Text(
+                      sizeLabel,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
-                ],
-              )
-            : thumb,
+                ),
+              ),
+            ],
+          )
+        : thumb;
+    final onTap = this.onTap;
+    return Tooltip(
+      message: showSize ? '${file.name} · $sizeLabel' : file.name,
+      child: Semantics(
+        button: onTap != null,
+        label: label,
+        hint: onTap == null ? null : s.openPhotoPreview,
+        onTap: onTap,
+        excludeSemantics: true,
+        child: InkWell(
+          onTap: onTap,
+          excludeFromSemantics: true,
+          borderRadius: BorderRadius.circular(8),
+          child: preview,
+        ),
       ),
     );
   }

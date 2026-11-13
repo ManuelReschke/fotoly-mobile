@@ -7,6 +7,8 @@ import 'package:fotoly_mobile/config/app_brand.dart';
 import 'package:fotoly_mobile/l10n/locale_controller.dart';
 import 'package:fotoly_mobile/models/backup_status.dart';
 import 'package:fotoly_mobile/models/user_profile.dart';
+import 'package:fotoly_mobile/screens/local_file_viewer.dart';
+import 'package:fotoly_mobile/widgets/gallery_zoom.dart';
 import 'package:fotoly_mobile/services/file_scanner.dart';
 import 'package:fotoly_mobile/services/storage.dart';
 import 'package:fotoly_mobile/theme/app_theme.dart';
@@ -415,6 +417,134 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.text('1 Foto ist größer als 25 MB'), findsOneWidget);
+  });
+
+  testWidgets('tapping a pending preview opens a large photo', (tester) async {
+    final dir = Directory.systemTemp.createTempSync('fotoly-preview-open');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final holiday = File('${dir.path}/holiday.png')
+      ..writeAsBytesSync(_onePixelPng);
+    final cat = File('${dir.path}/cat.png')..writeAsBytesSync(_onePixelPng);
+
+    await pumpL10n(
+      tester,
+      BackupStatusView(
+        status: BackupStatus.idle,
+        pending: [
+          LocalImageFile(
+            path: holiday.path,
+            name: 'holiday.png',
+            sizeBytes: holiday.lengthSync(),
+          ),
+          LocalImageFile(
+            path: cat.path,
+            name: 'cat.png',
+            sizeBytes: cat.lengthSync(),
+          ),
+        ],
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byKey(ValueKey(holiday.path)));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LocalFileViewer), findsOneWidget);
+    expect(find.text('holiday.png'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(LocalFileViewer),
+        matching: find.byType(Image),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.fling(
+      find.byType(GalleryZoom).hitTestable(),
+      const Offset(-500, 0),
+      2000,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('cat.png'), findsOneWidget);
+    expect(find.text('holiday.png'), findsNothing);
+
+    await tester.tap(find.byTooltip('Close preview'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LocalFileViewer), findsNothing);
+    expect(find.text('2 photos not yet secured'), findsOneWidget);
+  });
+
+  testWidgets('tapping an oversized preview opens that photo', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(400, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await pumpL10n(
+      tester,
+      locale: AppLocale.de,
+      const BackupStatusView(
+        status: BackupStatus.idle,
+        maxUploadBytes: 25 * 1024 * 1024,
+        tooLarge: [
+          LocalImageFile(
+            path: '/p/collage.jpg',
+            name: 'collage.jpg',
+            sizeBytes: 30 * 1024 * 1024,
+          ),
+        ],
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byKey(const ValueKey('/p/collage.jpg')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LocalFileViewer), findsOneWidget);
+    expect(find.text('collage.jpg'), findsOneWidget);
+    expect(find.byTooltip('Vorschau schließen'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Vorschau schließen'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LocalFileViewer), findsNothing);
+    expect(find.text('1 Foto ist größer als 25 MB'), findsOneWidget);
+  });
+
+  testWidgets('a double tap keeps the large preview open', (tester) async {
+    await pumpL10n(
+      tester,
+      const BackupStatusView(
+        status: BackupStatus.idle,
+        pending: [
+          LocalImageFile(
+            path: '/p/holiday.jpg',
+            name: 'holiday.jpg',
+            sizeBytes: 100,
+          ),
+        ],
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.byKey(const ValueKey('/p/holiday.jpg')));
+    await tester.pump();
+    await tester.pump();
+    expect(find.byType(LocalFileViewer), findsOneWidget);
+
+    await tester.tap(find.byType(LocalFileViewer));
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.byType(LocalFileViewer), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 800));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.byType(LocalFileViewer), findsOneWidget);
+
+    await tester.tap(find.byType(GalleryZoom));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LocalFileViewer), findsNothing);
+    expect(find.text('1 photo not yet secured'), findsOneWidget);
   });
 
   testWidgets('appearance card lists three modes and selects Dark', (

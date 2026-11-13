@@ -238,6 +238,12 @@ abstract class AppStrings {
   String get cameraFolderNotFound;
   String photosNotYetSecured(int count);
   String onePhotoNotYetSecured();
+
+  /// Semantics hint on a backup thumbnail that opens the large preview.
+  String get openPhotoPreview;
+
+  /// Tooltip on the button that closes the large backup preview.
+  String get closePhotoPreview;
   String alreadySafeOnPixelfox(int securedCount);
   String get everythingSecured;
   String everythingSecuredBody(int securedCount);
