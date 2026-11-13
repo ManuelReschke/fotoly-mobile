@@ -31,6 +31,8 @@ void main() {
     required FileScanner scanner,
     required FakeApiHttp fake,
     BackupLedger? ledger,
+    bool Function()? serverReachable,
+    int? Function()? accountUserId,
   }) {
     return BackupService(
       settings: settings,
@@ -38,6 +40,8 @@ void main() {
       ledger: ledger ?? BackupLedger(prefs: MemoryPrefsStore()),
       clientProvider: () => PixelfoxApiClient(apiKey: 'k', httpClient: fake),
       readBytes: (path) async => [1, 2, 3, 4],
+      serverReachable: serverReachable,
+      accountUserId: accountUserId,
     );
   }
 
@@ -132,6 +136,45 @@ void main() {
       expect(fake.sent.whereType<http.MultipartRequest>().length, 2);
     },
   );
+
+  test('startBackup loads the account ledger before uploading', () async {
+    final prefs = MemoryPrefsStore();
+    final settings = SettingsService(prefs: prefs);
+    await settings.setFolders(['/photos']);
+    const file = LocalImageFile(
+      path: '/photos/old.jpg',
+      name: 'old.jpg',
+      sizeBytes: 4,
+    );
+    final seeded = BackupLedger(prefs: prefs);
+    await seeded.load(userId: 7);
+    await seeded.markUploaded(file, imageUuid: 'already');
+
+    final fresh = BackupLedger(prefs: prefs);
+    final fake = FakeApiHttp(
+      sessionStatus: 200,
+      sessionBody: sessionFixture,
+      uploadStatus: 200,
+      uploadBody: uploadFixture,
+    );
+    final backup = buildBackup(
+      settings: settings,
+      scanner: FakeFileScanner([file]),
+      fake: fake,
+      ledger: fresh,
+      accountUserId: () => 7,
+    );
+
+    final status = await backup.startBackup();
+
+    expect(status.phase, BackupPhase.idle);
+    expect(status.completed, 0);
+    expect(backup.pendingCount, 0);
+    expect(backup.securedCount, 1);
+    expect(fake.sent.whereType<http.MultipartRequest>(), isEmpty);
+    expect(fresh.isBoundTo(7), isTrue);
+    expect(fresh.isBackedUp(file), isTrue);
+  });
 
   test('skips already secured files and only uploads new ones', () async {
     final prefs = MemoryPrefsStore();
@@ -1067,6 +1110,36 @@ void main() {
       backup.dispose();
     },
   );
+
+  test('startBackup while offline does not upload', () async {
+    final settings = SettingsService(prefs: MemoryPrefsStore());
+    await settings.setFolders(['/photos']);
+    final fake = FakeApiHttp(
+      sessionStatus: 200,
+      sessionBody: sessionFixture,
+      uploadStatus: 200,
+      uploadBody: uploadFixture,
+    );
+    final backup = buildBackup(
+      settings: settings,
+      scanner: FakeFileScanner([
+        const LocalImageFile(
+          path: '/photos/a.jpg',
+          name: 'a.jpg',
+          sizeBytes: 4,
+        ),
+      ]),
+      fake: fake,
+      serverReachable: () => false,
+    );
+
+    final status = await backup.startBackup();
+    expect(status.phase, BackupPhase.failed);
+    expect(status.message, BackupErrorCodes.offline);
+    expect(status.failed, 0);
+    expect(fake.sent, isEmpty);
+    backup.dispose();
+  });
 }
 
 class _CountingPrefs implements PrefsStore {

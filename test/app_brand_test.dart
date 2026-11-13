@@ -55,6 +55,11 @@ void main() {
     expect(fotoly.backupLedgerKey, 'fotoly_backup_ledger_v1');
     expect(fotoly.localePrefsKey, 'fotoly_locale');
     expect(fotoly.gallerySortPrefsKey, 'fotoly_gallery_sort');
+    expect(fotoly.profileCacheKey, 'fotoly_profile_cache');
+    expect(
+      fotoly.galleryPageCacheKey(42, 'desc'),
+      'fotoly_gallery_page_42_desc',
+    );
   });
 
   test('fromId maps flavor names and rejects unknown ids', () {

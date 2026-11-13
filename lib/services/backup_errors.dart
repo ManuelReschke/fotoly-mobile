@@ -11,6 +11,7 @@ abstract final class BackupErrorCodes {
   static const noImages = 'error.no_images';
   static const uploadsFailed = 'error.uploads_failed';
   static const scanFailed = 'error.scan_failed';
+  static const offline = 'error.backup.offline';
 }
 
 /// True when the upload was rejected because the file exceeds the plan cap.

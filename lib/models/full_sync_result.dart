@@ -8,6 +8,7 @@ class FullSyncResult {
     required this.errors,
     this.abortedAuth = false,
     this.busy = false,
+    this.offline = false,
   });
 
   /// Entries that had an image UUID and were attempted against the API.
@@ -30,6 +31,9 @@ class FullSyncResult {
 
   /// Could not run because backup or another full sync was already running.
   final bool busy;
+
+  /// Not started because Fotoly could not be reached.
+  final bool offline;
 
   static const FullSyncResult empty = FullSyncResult(
     checked: 0,

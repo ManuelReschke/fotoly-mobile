@@ -69,4 +69,25 @@ void main() {
     expect(profile('premium_max').isFreePlan, isFalse);
     expect(profile('').isFreePlan, isFalse);
   });
+
+  test('cache json round-trips storage and plan fields', () {
+    final json =
+        jsonDecode(
+              File('test/fixtures/profile_success.json').readAsStringSync(),
+            )
+            as Map<String, dynamic>;
+    final profile = UserProfile.fromJson(json);
+    final restored = UserProfile.fromCacheJson(profile.toCacheJson());
+
+    expect(restored.id, profile.id);
+    expect(restored.username, profile.username);
+    expect(restored.email, profile.email);
+    expect(restored.plan, profile.plan);
+    expect(restored.maxUploadBytes, profile.maxUploadBytes);
+    expect(restored.storageUsedBytes, profile.storageUsedBytes);
+    expect(restored.storageQuotaBytes, profile.storageQuotaBytes);
+    expect(restored.storageRemainingBytes, profile.storageRemainingBytes);
+    expect(restored.imageCount, profile.imageCount);
+    expect(restored.isFreePlan, isFalse);
+  });
 }

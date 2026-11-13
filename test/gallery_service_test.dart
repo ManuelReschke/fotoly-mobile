@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fotoly_mobile/config/app_brand.dart';
 import 'package:fotoly_mobile/models/backup_status.dart';
 import 'package:fotoly_mobile/services/gallery_service.dart';
+import 'package:fotoly_mobile/services/network_failure.dart';
 import 'package:fotoly_mobile/services/pixelfox_api_client.dart';
 import 'package:fotoly_mobile/services/storage.dart';
 import 'package:http/http.dart' as http;
@@ -241,6 +242,130 @@ void main() {
     service.onBackupPhaseChanged(BackupPhase.working, BackupPhase.success);
     await Future<void>.delayed(Duration.zero);
     expect(service.items.single.imageUuid, 'new');
+  });
+
+  test('offline refresh keeps the cached library page', () async {
+    final prefs = MemoryPrefsStore();
+    final online = FakeApiHttp(imagesStatus: 200, imagesBody: imagesFixture);
+    final saved = GalleryService(
+      clientProvider: () => PixelfoxApiClient(apiKey: 'k', httpClient: online),
+      prefs: prefs,
+      userId: () => 42,
+    );
+    await saved.refresh();
+    expect(saved.items, hasLength(2));
+
+    final offline = GalleryService(
+      clientProvider: () => PixelfoxApiClient(
+        apiKey: 'k',
+        httpClient: FakeApiHttp(
+          transportError: http.ClientException('offline'),
+        ),
+      ),
+      prefs: prefs,
+      userId: () => 42,
+    );
+    await offline.refresh();
+    expect(offline.loaded, isTrue);
+    expect(offline.error, isNull);
+    expect(offline.items.map((item) => item.imageUuid), [
+      'fd6b0a44-c4bb-4c95-8f48-31d5ec9cc4d8',
+      'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+    ]);
+  });
+
+  test('an empty library removes the cached page', () async {
+    final prefs = MemoryPrefsStore();
+    final fake = FakeApiHttp(imagesStatus: 200, imagesBody: imagesFixture);
+    final service = GalleryService(
+      clientProvider: () => PixelfoxApiClient(apiKey: 'k', httpClient: fake),
+      prefs: prefs,
+      userId: () => 42,
+    );
+    await service.refresh();
+    final key = AppBrand.current.galleryPageCacheKey(42, GallerySort.desc.name);
+    expect(await prefs.getString(key), isNotNull);
+
+    fake.imagesBody = '{"items":[],"has_more":false}';
+    await service.refresh();
+
+    expect(service.items, isEmpty);
+    expect(service.loaded, isTrue);
+    expect(await prefs.getString(key), isNull);
+
+    final offline = GalleryService(
+      clientProvider: () => PixelfoxApiClient(
+        apiKey: 'k',
+        httpClient: FakeApiHttp(
+          transportError: http.ClientException('offline'),
+        ),
+      ),
+      prefs: prefs,
+      userId: () => 42,
+    );
+    await offline.refresh();
+    expect(offline.items, isEmpty);
+    expect(offline.error, NetworkErrorCodes.unreachable);
+  });
+
+  test('a cached page stays usable while revalidation is in flight', () async {
+    final prefs = MemoryPrefsStore();
+    final online = FakeApiHttp(imagesStatus: 200, imagesBody: imagesFixture);
+    final saved = GalleryService(
+      clientProvider: () => PixelfoxApiClient(apiKey: 'k', httpClient: online),
+      prefs: prefs,
+      userId: () => 42,
+    );
+    await saved.refresh();
+
+    final gate = Completer<http.Response>();
+    final service = GalleryService(
+      clientProvider: () =>
+          PixelfoxApiClient(apiKey: 'k', httpClient: _HeldImagesHttp([gate])),
+      prefs: prefs,
+      userId: () => 42,
+    );
+    final pending = service.refresh();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(service.loaded, isTrue);
+    expect(service.loading, isFalse);
+    expect(service.items, hasLength(2));
+
+    gate.complete(http.Response(imagesFixture, 200));
+    await pending;
+    expect(service.loading, isFalse);
+  });
+
+  test('refresh requested during a fetch runs when that fetch ends', () async {
+    final first = Completer<http.Response>();
+    final second = Completer<http.Response>();
+    final held = _HeldImagesHttp([first, second]);
+    final service = GalleryService(
+      clientProvider: () => PixelfoxApiClient(apiKey: 'k', httpClient: held),
+    );
+
+    final initial = service.refresh();
+    await Future<void>.delayed(Duration.zero);
+    expect(held.urls, hasLength(1));
+
+    final again = service.refresh();
+    expect(identical(initial, again), isTrue);
+    expect(held.urls, hasLength(1));
+
+    first.complete(http.Response(imagesFixture, 200));
+    await Future<void>.delayed(Duration.zero);
+    expect(held.urls, hasLength(2));
+
+    second.complete(
+      http.Response(
+        '{"items":[{"image_uuid":"fresh","stable_url":"https://pixelfox.cc/f/fresh/original/original.jpg"}],"has_more":false}',
+        200,
+      ),
+    );
+    await again;
+    expect(service.items.single.imageUuid, 'fresh');
+    expect(service.loading, isFalse);
   });
 }
 

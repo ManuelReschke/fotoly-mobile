@@ -43,7 +43,11 @@ class FakeApiHttp implements ApiHttp {
     this.tokenStatus = 200,
     this.tokenBody,
     this.logoutStatus = 204,
+    this.transportError,
   });
+
+  /// When set, every GET throws this instead of returning a response.
+  final Object? transportError;
 
   int profileStatus;
   String? profileBody;
@@ -101,6 +105,8 @@ class FakeApiHttp implements ApiHttp {
 
   @override
   Future<http.Response> get(Uri url, {Map<String, String>? headers}) async {
+    final failure = transportError;
+    if (failure != null) throw failure;
     sent.add(_RecordedRequest('GET', url, headers ?? {}));
     if (url.path.endsWith('/auth/providers')) {
       return http.Response(

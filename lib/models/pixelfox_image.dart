@@ -48,6 +48,17 @@ class PixelfoxImage {
     }
     return parsed;
   }
+
+  Map<String, dynamic> toJson() => {
+    'image_uuid': imageUuid,
+    'stable_url': stableUrl,
+    'title': title,
+    'file_name': fileName,
+    'width': width,
+    'height': height,
+    'created_at': createdAt?.toIso8601String(),
+    'is_nsfw': isNsfw,
+  };
 }
 
 class PixelfoxImagePage {

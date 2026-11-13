@@ -16,6 +16,7 @@ import 'services/storage.dart';
 import 'theme/app_theme.dart';
 import 'theme/theme_mode_controller.dart';
 import 'widgets/main_shell.dart';
+import 'widgets/offline_banner.dart';
 import 'widgets/pixelfox_logo.dart';
 
 class PixelfoxApp extends StatelessWidget {
@@ -25,6 +26,8 @@ class PixelfoxApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final locale = context.watch<LocaleController>();
     final themeMode = context.watch<ThemeModeController>();
+    final auth = context.watch<AuthService>();
+    final offline = auth.initialized && auth.isOffline;
     return MaterialApp(
       title: locale.strings.appTitle,
       debugShowCheckedModeBanner: false,
@@ -33,6 +36,25 @@ class PixelfoxApp extends StatelessWidget {
       themeMode: themeMode.materialThemeMode,
       themeAnimationDuration: Duration.zero,
       locale: Locale(locale.locale.code),
+      builder: (context, child) {
+        return Column(
+          children: [
+            if (offline)
+              OfflineBanner(
+                message: auth.isAuthenticated
+                    ? locale.strings.offlineBanner
+                    : locale.strings.offlineLoginBanner,
+              ),
+            Expanded(
+              child: MediaQuery.removePadding(
+                context: context,
+                removeTop: offline,
+                child: child ?? const SizedBox.shrink(),
+              ),
+            ),
+          ],
+        );
+      },
       home: const _RootGate(),
     );
   }
@@ -80,7 +102,9 @@ class _AuthenticatedShellState extends State<_AuthenticatedShell>
   BackupService? _backup;
   GalleryService? _gallery;
   AlbumService? _albums;
+  AuthService? _auth;
   bool _booting = false;
+  bool _wasOffline = false;
 
   @override
   void initState() {
@@ -91,9 +115,15 @@ class _AuthenticatedShellState extends State<_AuthenticatedShell>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final auth = context.read<AuthService>();
+    if (!identical(_auth, auth)) {
+      _auth?.removeListener(_onAuth);
+      _auth = auth;
+      _wasOffline = auth.isOffline;
+      auth.addListener(_onAuth);
+    }
     if (_backup != null || _booting) return;
     _booting = true;
-    final auth = context.read<AuthService>();
     final settings = context.read<SettingsService>();
     final ledger = context.read<BackupLedger>();
     final prefs = context.read<PrefsStore>();
@@ -102,6 +132,8 @@ class _AuthenticatedShellState extends State<_AuthenticatedShell>
       ledger: ledger,
       maxUploadBytes: () => auth.profile?.maxUploadBytes,
       planChanges: auth,
+      serverReachable: () => !auth.isOffline,
+      accountUserId: () => auth.profile?.id,
       clientProvider: () {
         final client = auth.client;
         if (client == null) {
@@ -112,6 +144,7 @@ class _AuthenticatedShellState extends State<_AuthenticatedShell>
     );
     _gallery = GalleryService(
       prefs: prefs,
+      userId: () => auth.profile?.id,
       clientProvider: () {
         final client = auth.client;
         if (client == null) throw StateError('Not authenticated');
@@ -136,7 +169,7 @@ class _AuthenticatedShellState extends State<_AuthenticatedShell>
     SettingsService settings,
     BackupLedger ledger,
   ) async {
-    await ledger.load(userId: auth.profile?.id);
+    await ledger.ensureUser(auth.profile?.id);
     if (settings.hasFolders && MediaAccess.isRuntimePermissionRequired) {
       final result = await MediaAccess().ensureReadAccess();
       if (result == MediaAccessResult.denied ||
@@ -146,6 +179,24 @@ class _AuthenticatedShellState extends State<_AuthenticatedShell>
       }
     }
     await _backup?.refreshInventory();
+  }
+
+  void _onAuth() {
+    final auth = _auth;
+    if (auth == null || !mounted) return;
+    final offline = auth.isOffline;
+    final cameOnline = _wasOffline && !offline;
+    _wasOffline = offline;
+    if (cameOnline) unawaited(_onAccountOnline(auth));
+  }
+
+  Future<void> _onAccountOnline(AuthService auth) async {
+    final ledger = context.read<BackupLedger>();
+    await ledger.ensureUser(auth.profile?.id);
+    if (!mounted) return;
+    await _backup?.refreshInventory();
+    if (!mounted) return;
+    await _gallery?.refresh();
   }
 
   Future<void> _refreshOnResume() async {
@@ -200,6 +251,7 @@ class _AuthenticatedShellState extends State<_AuthenticatedShell>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _auth?.removeListener(_onAuth);
     _backup?.dispose();
     _gallery?.dispose();
     _albums?.dispose();

@@ -86,6 +86,45 @@ class UserProfile {
     'storage_used_bytes': storageUsedBytes,
     'storage_quota_bytes': storageQuotaBytes,
   };
+
+  /// Flat snapshot kept on device so the shell can open without the API.
+  Map<String, dynamic> toCacheJson() => {
+    'id': id,
+    'username': username,
+    'email': email,
+    'status': status,
+    'plan': plan,
+    'max_upload_bytes': maxUploadBytes,
+    'storage_quota_bytes': storageQuotaBytes,
+    'storage_used_bytes': storageUsedBytes,
+    'storage_remaining_bytes': storageRemainingBytes,
+    'image_count': imageCount,
+  };
+
+  factory UserProfile.fromCacheJson(Map<String, dynamic> json) {
+    final id = _cacheInt(json['id']);
+    if (id == null) {
+      throw const FormatException('cached profile is missing id');
+    }
+    return UserProfile(
+      id: id,
+      username: json['username'] as String? ?? '',
+      email: json['email'] as String? ?? '',
+      status: json['status'] as String? ?? '',
+      plan: json['plan'] as String? ?? '',
+      maxUploadBytes: _cacheInt(json['max_upload_bytes']),
+      storageQuotaBytes: _cacheInt(json['storage_quota_bytes']),
+      storageUsedBytes: _cacheInt(json['storage_used_bytes']),
+      storageRemainingBytes: _cacheInt(json['storage_remaining_bytes']),
+      imageCount: _cacheInt(json['image_count']),
+    );
+  }
+}
+
+int? _cacheInt(Object? value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return null;
 }
 
 /// Human-readable byte sizes (e.g. 700 MB, 1.2 GB).

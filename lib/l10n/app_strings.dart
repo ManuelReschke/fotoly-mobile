@@ -353,4 +353,9 @@ abstract class AppStrings {
   String get premiumUpsellPriceNote;
   String get premiumUpsellCta;
   String get premiumUpsellOpenFailed;
+
+  // —— Offline ——
+  String get offlineBanner;
+  String get offlineLoginBanner;
+  String get offlineBackupBlocked;
 }

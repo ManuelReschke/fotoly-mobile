@@ -999,4 +999,16 @@ class AppStringsEn extends AppStrings {
 
   @override
   String get premiumUpsellOpenFailed => 'Could not open the pricing page.';
+
+  @override
+  String get offlineBanner =>
+      'You are offline. Fotoly can\'t be reached. Your last account details and photos already on this device stay visible.';
+
+  @override
+  String get offlineLoginBanner =>
+      'No internet. Signing in needs a connection to Fotoly.';
+
+  @override
+  String get offlineBackupBlocked =>
+      'Nothing is uploaded while you are offline.';
 }

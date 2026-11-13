@@ -57,6 +57,7 @@ class BackupLedger {
   final PrefsStore _prefs;
   final Map<String, BackedUpEntry> _byFingerprint = {};
   int? _userId;
+  bool _bound = false;
 
   /// True when memory has uploads or removals not yet written to prefs.
   bool _dirty = false;
@@ -71,8 +72,21 @@ class BackupLedger {
   bool isPathSizeBackedUp(String path, int sizeBytes) =>
       _byFingerprint.containsKey(backupFingerprint(path, sizeBytes));
 
+  /// True when memory was loaded for [userId], including a legacy null id.
+  bool isBoundTo(int? userId) => _bound && _userId == userId;
+
+  /// Binds memory to [userId] when it is not already that account.
+  ///
+  /// A null id leaves memory unchanged so an offline open without a profile
+  /// snapshot cannot replace the account ledger with the legacy key.
+  Future<void> ensureUser(int? userId) async {
+    if (userId == null || isBoundTo(userId)) return;
+    await load(userId: userId);
+  }
+
   Future<void> load({int? userId}) async {
     _userId = userId;
+    _bound = true;
     _dirty = false;
     _byFingerprint.clear();
     var raw = await _prefs.getString(backupLedgerKeyForUser(userId));

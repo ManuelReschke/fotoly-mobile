@@ -76,6 +76,11 @@ class AppBrand {
   String get localePrefsKey => '${id}_locale';
   String get themeModePrefsKey => '${id}_theme_mode';
   String get gallerySortPrefsKey => '${id}_gallery_sort';
+  String get profileCacheKey => '${id}_profile_cache';
+
+  /// Last library page for [userId], keyed by gallery sort (`desc` or `asc`).
+  String galleryPageCacheKey(int userId, String order) =>
+      '${id}_gallery_page_${userId}_$order';
 
   static const pixelfox = AppBrand(
     id: 'pixelfox',

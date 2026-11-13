@@ -1027,4 +1027,15 @@ class AppStringsDe extends AppStrings {
   @override
   String get premiumUpsellOpenFailed =>
       'Die Preisseite konnte nicht geöffnet werden.';
+
+  @override
+  String get offlineBanner =>
+      'Du bist offline. Fotoly ist nicht erreichbar. Deine letzten Kontodaten und bereits geladene Fotos bleiben sichtbar.';
+
+  @override
+  String get offlineLoginBanner =>
+      'Kein Internet. Die Anmeldung braucht eine Verbindung zu Fotoly.';
+
+  @override
+  String get offlineBackupBlocked => 'Ohne Internet wird nichts hochgeladen.';
 }

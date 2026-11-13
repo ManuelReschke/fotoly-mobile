@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../l10n/app_strings.dart';
 import '../l10n/l10n_scope.dart';
 import '../models/full_sync_result.dart';
+import '../services/auth_service.dart';
 import '../services/backup_service.dart';
 import '../theme/app_theme.dart';
 
@@ -17,6 +18,10 @@ class FullSyncCard extends StatelessWidget {
 
     if (backup.running || backup.fullSyncRunning) {
       _snack(context, s.fullSyncBusyBackup);
+      return;
+    }
+    if (context.read<AuthService>().isOffline) {
+      _snack(context, s.offlineBackupBlocked);
       return;
     }
 
@@ -116,6 +121,10 @@ class FullSyncCard extends StatelessWidget {
   }
 
   void _showResultSnack(BuildContext context, AppStrings s, FullSyncResult r) {
+    if (r.offline) {
+      _snack(context, s.offlineBackupBlocked);
+      return;
+    }
     if (r.busy) {
       _snack(context, s.fullSyncBusyBackup);
       return;
@@ -171,11 +180,7 @@ class FullSyncCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                     color: AppTheme.foxOrange.withValues(alpha: 0.12),
                   ),
-                  child: Icon(
-                    Icons.sync,
-                    color: AppTheme.foxOrange,
-                    size: 24,
-                  ),
+                  child: Icon(Icons.sync, color: AppTheme.foxOrange, size: 24),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

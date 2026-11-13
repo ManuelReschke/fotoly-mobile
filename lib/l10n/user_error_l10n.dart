@@ -1,5 +1,6 @@
 import '../services/auth_errors.dart';
 import '../services/backup_errors.dart';
+import '../services/network_failure.dart';
 import 'app_strings.dart';
 
 /// Maps a service error code or an English API message to UI copy.
@@ -43,6 +44,10 @@ String? _mapKnown(AppStrings strings, String message) {
       return strings.someUploadsFailed;
     case BackupErrorCodes.scanFailed:
       return strings.scanFailed;
+    case BackupErrorCodes.offline:
+      return strings.offlineBackupBlocked;
+    case NetworkErrorCodes.unreachable:
+      return strings.networkError;
     default:
       return _mapPhrase(strings, message.toLowerCase());
   }

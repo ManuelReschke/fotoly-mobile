@@ -105,6 +105,48 @@ void main() {
     expect(next.isBackedUp(file), isFalse);
   });
 
+  test(
+    'ensureUser keeps an account ledger when the id is still unknown',
+    () async {
+      final prefs = MemoryPrefsStore();
+      final ledger = BackupLedger(prefs: prefs);
+      const file = LocalImageFile(
+        path: '/photos/x.png',
+        name: 'x.png',
+        sizeBytes: 42,
+      );
+      await ledger.load(userId: 1);
+      await ledger.markUploaded(file, imageUuid: 'u1', persist: false);
+
+      await ledger.ensureUser(null);
+      expect(ledger.isBoundTo(1), isTrue);
+      expect(ledger.isBackedUp(file), isTrue);
+
+      await ledger.ensureUser(1);
+      expect(ledger.isBackedUp(file), isTrue);
+    },
+  );
+
+  test('ensureUser(null) does not adopt the legacy ledger', () async {
+    final prefs = MemoryPrefsStore();
+    final legacy = BackupLedger(prefs: prefs);
+    const file = LocalImageFile(
+      path: '/photos/old.png',
+      name: 'old.png',
+      sizeBytes: 8,
+    );
+    await legacy.markUploaded(file, imageUuid: 'legacy');
+
+    final fresh = BackupLedger(prefs: prefs);
+    await fresh.ensureUser(null);
+    expect(fresh.isBackedUp(file), isFalse);
+    expect(fresh.count, 0);
+
+    await fresh.ensureUser(4);
+    expect(fresh.isBoundTo(4), isTrue);
+    expect(fresh.isBackedUp(file), isTrue);
+  });
+
   test('deferred uploads stay in memory and hit prefs once on flush', () async {
     final prefs = _CountingPrefs();
     final ledger = BackupLedger(prefs: prefs);

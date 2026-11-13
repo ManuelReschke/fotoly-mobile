@@ -70,6 +70,13 @@ class _HomeScreenState extends State<HomeScreen> {
     if (backup.running) return;
     final s = context.l10nRead;
 
+    if (context.read<AuthService>().isOffline) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(s.offlineBackupBlocked)));
+      return;
+    }
+
     if (!settings.hasFolders) {
       ScaffoldMessenger.of(
         context,

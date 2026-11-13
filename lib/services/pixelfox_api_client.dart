@@ -95,6 +95,13 @@ class DefaultApiHttp implements ApiHttp {
   DefaultApiHttp([http.Client? client]) : _client = client ?? http.Client();
 
   final http.Client _client;
+  var _closed = false;
+
+  void close() {
+    if (_closed) return;
+    _closed = true;
+    _client.close();
+  }
 
   @override
   Future<http.Response> get(Uri url, {Map<String, String>? headers}) =>
@@ -176,13 +183,22 @@ class PixelfoxApiClient {
     String? baseUrl,
     this._requestLog,
   }) : baseUrl = baseUrl ?? ApiConfig.baseUrl,
+       _ownsHttp = httpClient == null,
        _http = httpClient ?? DefaultApiHttp();
 
   final String? apiKey;
   final String? accessToken;
   final String baseUrl;
+  final bool _ownsHttp;
   final ApiHttp _http;
   final List<ApiRequestLog>? _requestLog;
+
+  /// Closes the HTTP client this instance created. Injected clients are left
+  /// open because callers reuse them.
+  void close() {
+    final transport = _http;
+    if (_ownsHttp && transport is DefaultApiHttp) transport.close();
+  }
 
   String get _apiRoot => '$baseUrl${ApiConfig.apiPrefix}';
 

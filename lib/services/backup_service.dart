@@ -42,6 +42,8 @@ class BackupService extends ChangeNotifier {
     this.minAutoInventoryInterval = kMinAutoInventoryInterval,
     this.maxUploadBytes,
     this._planChanges,
+    this._serverReachable,
+    this._accountUserId,
   }) : _scanner = scanner ?? IoFileScanner() {
     _seenPlanMax = maxUploadBytes?.call();
     _settings.addListener(_onSettingsChanged);
@@ -59,6 +61,17 @@ class BackupService extends ChangeNotifier {
   final int? Function()? maxUploadBytes;
 
   final Listenable? _planChanges;
+
+  /// When this returns false, uploads and full sync are refused.
+  /// Null means the caller does not track reachability.
+  final bool Function()? _serverReachable;
+
+  /// Account whose ledger must be loaded before a scan or upload.
+  /// Null leaves the ledger that is already in memory.
+  final int? Function()? _accountUserId;
+
+  Future<void> _ensureLedger() => _ledger.ensureUser(_accountUserId?.call());
+
   int? _seenPlanMax;
 
   /// Files the server rejected for size while the profile cap was stale or missing.
@@ -339,6 +352,7 @@ class BackupService extends ChangeNotifier {
     var succeeded = false;
 
     try {
+      await _ensureLedger();
       final folders = _settings.folders;
       if (folders.isEmpty) {
         _allImages = [];
@@ -517,10 +531,23 @@ class BackupService extends ChangeNotifier {
   /// Does **not** upload. Entries without [BackedUpEntry.imageUuid] are left
   /// alone. Missing remote images (HTTP 404) are removed from the ledger so
   /// the next [startBackup] can re-upload them.
+  bool get _canReachServer => _serverReachable?.call() ?? true;
+
   Future<FullSyncResult> fullSyncRemote() async {
     if (_running || _fullSyncRunning) {
       return FullSyncResult.busyResult;
     }
+    if (!_canReachServer) {
+      return const FullSyncResult(
+        checked: 0,
+        stillPresent: 0,
+        removed: 0,
+        skippedNoUuid: 0,
+        errors: 0,
+        offline: true,
+      );
+    }
+    await _ensureLedger();
 
     _fullSyncRunning = true;
     _fullSyncChecked = 0;
@@ -607,6 +634,12 @@ class BackupService extends ChangeNotifier {
   /// Start backup of **pending** images only (skips already secured).
   Future<BackupStatus> startBackup() async {
     if (_running || _fullSyncRunning) return status;
+    if (!_canReachServer) {
+      _errorMessage = BackupErrorCodes.offline;
+      notifyListeners();
+      return status;
+    }
+    await _ensureLedger();
 
     // Wait out quiet/manual inventory so we do not double-walk the tree or
     // race writes to _allImages / _pending. Drop leftover auto requests —

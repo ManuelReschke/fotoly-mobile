@@ -21,6 +21,7 @@ Future<void> main() async {
   final appLinks = AppLinks();
   final auth = AuthService(
     secureStore: secureStore,
+    prefs: prefsStore,
     openAuthSession: (url, scheme) => openOAuthSession(
       authorizationUrl: url,
       callbackUrlScheme: scheme,
@@ -40,7 +41,7 @@ Future<void> main() async {
     locale.load(),
     themeMode.load(),
   ]);
-  await ledger.load(userId: auth.profile?.id);
+  await ledger.ensureUser(auth.profile?.id);
 
   runApp(
     MultiProvider(
