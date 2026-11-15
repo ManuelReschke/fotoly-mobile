@@ -44,6 +44,38 @@ void main() {
     expect(log.last.jsonBody, {'user_id': 9});
   });
 
+  test('invite by a complete email address', () async {
+    final fake = FakeApiHttp(
+      memberPostBody:
+          '{"user_id":3,"username":"ada","role":"viewer","origin":"invite","created_at":"2026-01-01T00:00:00Z","already_member":false}',
+    );
+    final log = <ApiRequestLog>[];
+    final invited = await client(
+      fake,
+      log,
+    ).inviteAlbumMember(7, email: 'Ada@Example.com');
+    expect(invited.member.username, 'ada');
+    expect(log.single.jsonBody, {'email': 'Ada@Example.com'});
+  });
+
+  test('members field sends a name or a complete email', () {
+    expect(AlbumInviteQuery.parse('  Ada  ').username, 'Ada');
+    expect(AlbumInviteQuery.parse('Ada@Example.com').email, 'Ada@Example.com');
+    expect(
+      AlbumInviteQuery.parse('ada@example').issue,
+      AlbumInviteQuery.incompleteEmail,
+    );
+    expect(AlbumInviteQuery.parse('   ').issue, AlbumInviteQuery.required);
+    expect(
+      AlbumInviteQuery.parse('a' * 151).issue,
+      AlbumInviteQuery.usernameTooLong,
+    );
+    expect(
+      AlbumInviteQuery.parse('${'a' * 190}@example.com').issue,
+      AlbumInviteQuery.emailTooLong,
+    );
+  });
+
   test('remove member accepts an empty 204 body', () async {
     final fake = FakeApiHttp();
     final log = <ApiRequestLog>[];
@@ -95,6 +127,14 @@ void main() {
     expect(
       message('{"message":"user not found"}', status: 404),
       strings.albumMemberUserNotFound,
+    );
+    expect(
+      message('{"message":"email must be a complete address"}'),
+      strings.albumEmailIncomplete,
+    );
+    expect(
+      message('{"message":"email must not exceed 200 characters"}'),
+      strings.albumEmailTooLong,
     );
     expect(
       message('{"message":"album member limit reached"}', status: 409),

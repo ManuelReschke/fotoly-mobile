@@ -278,10 +278,10 @@ class AppStringsDe extends AppStrings {
 
   @override
   String get albumMembersHelp =>
-      'Eingeladene Personen können dieses Album ansehen.';
+      'Einladung mit Benutzername oder vollständiger E-Mail-Adresse. Eingeladene Personen können dieses Album ansehen.';
 
   @override
-  String get albumInviteLabel => 'Benutzername';
+  String get albumInviteLabel => 'Benutzername oder E-Mail';
 
   @override
   String get albumInviteAction => 'Einladen';
@@ -315,7 +315,8 @@ class AppStringsDe extends AppStrings {
   String get albumMemberOriginLinkSave => 'Über Link gespeichert';
 
   @override
-  String get albumMemberUserNotFound => 'Kein aktives Konto mit diesem Namen.';
+  String get albumMemberUserNotFound =>
+      'Kein aktives Konto mit diesem Namen oder dieser E-Mail.';
 
   @override
   String get albumMemberNotFound => 'Mitglied nicht gefunden.';
@@ -329,10 +330,18 @@ class AppStringsDe extends AppStrings {
       'Dieses Album hat die maximale Anzahl an Mitgliedern erreicht.';
 
   @override
-  String get albumUsernameRequired => 'Bitte einen Benutzernamen eingeben.';
+  String get albumUsernameRequired =>
+      'Bitte einen Benutzernamen oder eine E-Mail-Adresse eingeben.';
 
   @override
   String get albumUsernameTooLong => 'Der Benutzername ist zu lang.';
+
+  @override
+  String get albumEmailIncomplete =>
+      'Bitte die vollständige E-Mail-Adresse eingeben.';
+
+  @override
+  String get albumEmailTooLong => 'Die E-Mail-Adresse ist zu lang.';
 
   @override
   String get albumMemberAmbiguous =>

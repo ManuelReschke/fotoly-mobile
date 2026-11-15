@@ -701,20 +701,34 @@ class PixelfoxApiClient {
     return _memberList(json['members']);
   }
 
-  /// Invites by [username] or, after an ambiguous match, by [userId].
-  /// Exactly one of the two must be set.
+  /// Invites by [username], by a complete [email], or, after an ambiguous
+  /// name match, by [userId]. Exactly one of the three must be set.
   Future<AlbumMemberInvite> inviteAlbumMember(
     int albumId, {
     int? userId,
     String? username,
+    String? email,
   }) async {
-    if ((userId == null) == (username == null)) {
-      throw ArgumentError('provide exactly one of userId or username');
+    final selected = <Object?>[
+      userId,
+      username,
+      email,
+    ].where((value) => value != null).length;
+    if (selected != 1) {
+      throw ArgumentError('provide exactly one of userId, username, or email');
+    }
+    final Map<String, Object> body;
+    if (userId != null) {
+      body = {'user_id': userId};
+    } else if (username != null) {
+      body = {'username': username};
+    } else {
+      body = {'email': email!};
     }
     final response = await _sendJson(
       'POST',
       Uri.parse('$_apiRoot/albums/$albumId/members'),
-      userId != null ? {'user_id': userId} : {'username': username},
+      body,
     );
     if (response.statusCode == 409) {
       final candidates = albumMemberCandidatesFromBody(response.body);

@@ -90,6 +90,59 @@ List<AlbumMemberCandidate> albumMemberCandidatesFromBody(String body) {
   }
 }
 
+/// Splits the members field into one username or one complete email address.
+///
+/// A value that contains @ is an email. Anything else stays a display name.
+class AlbumInviteQuery {
+  const AlbumInviteQuery._({this.username, this.email, this.issue});
+
+  static const String required = 'required';
+  static const String usernameTooLong = 'username_too_long';
+  static const String emailTooLong = 'email_too_long';
+  static const String incompleteEmail = 'incomplete_email';
+
+  final String? username;
+  final String? email;
+
+  /// [required], [usernameTooLong], [emailTooLong], or [incompleteEmail].
+  final String? issue;
+
+  factory AlbumInviteQuery.parse(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty) {
+      return const AlbumInviteQuery._(issue: required);
+    }
+    if (value.contains('@')) {
+      if (value.runes.length > 200) {
+        return const AlbumInviteQuery._(issue: emailTooLong);
+      }
+      if (!_completeEmail(value)) {
+        return const AlbumInviteQuery._(issue: incompleteEmail);
+      }
+      return AlbumInviteQuery._(email: value);
+    }
+    if (value.runes.length > 150) {
+      return const AlbumInviteQuery._(issue: usernameTooLong);
+    }
+    return AlbumInviteQuery._(username: value);
+  }
+}
+
+bool _completeEmail(String value) {
+  final at = value.indexOf('@');
+  if (at <= 0 || at == value.length - 1 || at != value.lastIndexOf('@')) {
+    return false;
+  }
+  final local = value.substring(0, at);
+  final domain = value.substring(at + 1);
+  if (local.contains(RegExp(r'[ \t]')) || domain.contains(RegExp(r'[ \t]'))) {
+    return false;
+  }
+  return domain.contains('.') &&
+      !domain.startsWith('.') &&
+      !domain.endsWith('.');
+}
+
 /// Category from GET/POST /api/v1/album-categories.
 class AlbumCategory {
   const AlbumCategory({

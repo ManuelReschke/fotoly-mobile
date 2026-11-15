@@ -100,11 +100,13 @@ class AlbumService extends ChangeNotifier {
     int albumId, {
     int? userId,
     String? username,
+    String? email,
   }) {
     return _clientProvider().inviteAlbumMember(
       albumId,
       userId: userId,
       username: username,
+      email: email,
     );
   }
 

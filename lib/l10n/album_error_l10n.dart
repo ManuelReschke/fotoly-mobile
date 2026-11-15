@@ -19,7 +19,14 @@ String localizeAlbumSharingError(
   if (body.contains('username must not exceed')) {
     return strings.albumUsernameTooLong;
   }
-  if (body.contains('username is required')) {
+  if (body.contains('email must not exceed')) {
+    return strings.albumEmailTooLong;
+  }
+  if (body.contains('email must be a complete address')) {
+    return strings.albumEmailIncomplete;
+  }
+  if (body.contains('username is required') ||
+      body.contains('email is required')) {
     return strings.albumUsernameRequired;
   }
   if (body.contains('member not found')) return strings.albumMemberNotFound;

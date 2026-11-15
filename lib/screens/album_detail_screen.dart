@@ -113,8 +113,12 @@ class _AlbumDetailScreenState extends State<AlbumDetailScreen> {
     return showAlbumMembersSheet(
       context: context,
       load: () => albums.members(album.id),
-      invite: ({userId, username}) =>
-          albums.inviteMember(album.id, userId: userId, username: username),
+      invite: ({userId, username, email}) => albums.inviteMember(
+        album.id,
+        userId: userId,
+        username: username,
+        email: email,
+      ),
       remove: (userId) => albums.removeMember(album.id, userId),
     );
   }

@@ -114,6 +114,8 @@ abstract class AppStrings {
   String get albumMemberLimit;
   String get albumUsernameRequired;
   String get albumUsernameTooLong;
+  String get albumEmailIncomplete;
+  String get albumEmailTooLong;
   String get albumMemberAmbiguous;
   String get albumMemberInviteError;
   String get albumMemberLoadError;

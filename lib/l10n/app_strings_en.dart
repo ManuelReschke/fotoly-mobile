@@ -273,10 +273,11 @@ class AppStringsEn extends AppStrings {
   String get albumMembersEmpty => 'No members yet.';
 
   @override
-  String get albumMembersHelp => 'Invited people can view this album.';
+  String get albumMembersHelp =>
+      'Invite with a username or a complete email address. Invited people can view this album.';
 
   @override
-  String get albumInviteLabel => 'Username';
+  String get albumInviteLabel => 'Username or email';
 
   @override
   String get albumInviteAction => 'Invite';
@@ -309,7 +310,8 @@ class AppStringsEn extends AppStrings {
   String get albumMemberOriginLinkSave => 'Saved from link';
 
   @override
-  String get albumMemberUserNotFound => 'No active account with that name.';
+  String get albumMemberUserNotFound =>
+      'No active account with that name or email.';
 
   @override
   String get albumMemberNotFound => 'Member not found.';
@@ -322,10 +324,16 @@ class AppStringsEn extends AppStrings {
   String get albumMemberLimit => 'This album has reached the member limit.';
 
   @override
-  String get albumUsernameRequired => 'Enter a username.';
+  String get albumUsernameRequired => 'Enter a username or email address.';
 
   @override
   String get albumUsernameTooLong => 'That username is too long.';
+
+  @override
+  String get albumEmailIncomplete => 'Enter the complete email address.';
+
+  @override
+  String get albumEmailTooLong => 'That email address is too long.';
 
   @override
   String get albumMemberAmbiguous =>

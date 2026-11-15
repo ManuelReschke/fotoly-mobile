@@ -8,7 +8,11 @@ import '../services/pixelfox_api_client.dart';
 import 'sheet_insets.dart';
 
 typedef AlbumMemberInviteCall =
-    Future<AlbumMemberInvite> Function({int? userId, String? username});
+    Future<AlbumMemberInvite> Function({
+      int? userId,
+      String? username,
+      String? email,
+    });
 
 /// Invite and remove members of one owned album.
 Future<void> showAlbumMembersSheet({
@@ -93,20 +97,19 @@ class _AlbumMembersBodyState extends State<_AlbumMembersBody> {
     }
   }
 
-  Future<void> _invite({int? userId, String? username}) async {
+  Future<void> _invite({int? userId}) async {
     if (_working) return;
     final s = context.l10nRead;
+    String? username;
+    String? email;
     if (userId == null) {
-      final name = _username.text.trim();
-      if (name.isEmpty) {
-        setState(() => _error = s.albumUsernameRequired);
+      final query = AlbumInviteQuery.parse(_username.text);
+      if (query.issue != null) {
+        setState(() => _error = _inviteIssueText(s, query.issue!));
         return;
       }
-      if (name.runes.length > 150) {
-        setState(() => _error = s.albumUsernameTooLong);
-        return;
-      }
-      username = name;
+      username = query.username;
+      email = query.email;
     }
     setState(() {
       _working = true;
@@ -114,7 +117,11 @@ class _AlbumMembersBodyState extends State<_AlbumMembersBody> {
       _notice = null;
     });
     try {
-      final result = await widget.invite(userId: userId, username: username);
+      final result = await widget.invite(
+        userId: userId,
+        username: username,
+        email: email,
+      );
       if (!mounted) return;
       setState(() {
         _working = false;
@@ -232,6 +239,10 @@ class _AlbumMembersBodyState extends State<_AlbumMembersBody> {
                     child: TextField(
                       key: const Key('album-invite-username'),
                       controller: _username,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      keyboardType: TextInputType.emailAddress,
+                      textCapitalization: TextCapitalization.none,
                       textInputAction: TextInputAction.done,
                       decoration: InputDecoration(
                         labelText: s.albumInviteLabel,
@@ -308,6 +319,19 @@ class _AlbumMembersBodyState extends State<_AlbumMembersBody> {
           ),
       ],
     );
+  }
+}
+
+String _inviteIssueText(AppStrings strings, String issue) {
+  switch (issue) {
+    case AlbumInviteQuery.usernameTooLong:
+      return strings.albumUsernameTooLong;
+    case AlbumInviteQuery.emailTooLong:
+      return strings.albumEmailTooLong;
+    case AlbumInviteQuery.incompleteEmail:
+      return strings.albumEmailIncomplete;
+    default:
+      return strings.albumUsernameRequired;
   }
 }
 
