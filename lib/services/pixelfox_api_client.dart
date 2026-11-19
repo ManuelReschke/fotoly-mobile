@@ -314,6 +314,62 @@ class PixelfoxApiClient {
     );
   }
 
+  /// One-time website login. The app token stays in the request headers.
+  Future<Uri> createWebHandoff({String next = '/pricing'}) async {
+    final uri = Uri.parse(ApiConfig.authWebHandoffUrl());
+    final body = <String, dynamic>{'next': next};
+    final headers = {..._authHeaders, 'Content-Type': 'application/json'};
+    _log(
+      ApiRequestLog(
+        method: 'POST',
+        url: uri.toString(),
+        headers: headers,
+        jsonBody: body,
+      ),
+    );
+
+    final response = await _http.post(
+      uri,
+      headers: headers,
+      body: jsonEncode(body),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw PixelfoxApiException(
+        'Could not create web handoff',
+        statusCode: response.statusCode,
+      );
+    }
+    final handoff = _absoluteHttpUri(response.body);
+    if (handoff == null) {
+      throw PixelfoxApiException(
+        'Web handoff response is missing a url',
+        statusCode: response.statusCode,
+      );
+    }
+    return handoff;
+  }
+
+  /// Reads `url` from a handoff body. Rejects anything that is not an
+  /// absolute http(s) URI, and never echoes the payload (it may contain
+  /// a credential).
+  Uri? _absoluteHttpUri(String raw) {
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return null;
+      final value = decoded['url'];
+      if (value is! String) return null;
+      final parsed = Uri.tryParse(value.trim());
+      if (parsed == null || !parsed.hasScheme || parsed.host.isEmpty) {
+        return null;
+      }
+      final scheme = parsed.scheme.toLowerCase();
+      if (scheme != 'http' && scheme != 'https') return null;
+      return parsed;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Uri oauthStartUri(String provider) {
     return Uri.parse(
       '$_apiRoot/auth/$provider/start',

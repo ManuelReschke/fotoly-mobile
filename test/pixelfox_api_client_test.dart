@@ -444,4 +444,88 @@ void main() {
       );
     });
   });
+
+  group('PixelfoxApiClient.createWebHandoff', () {
+    const token = 'pxls_handoff_secret';
+    const handoffUrl = 'https://fotoly.eu/auth/app?code=once&next=%2Fpricing';
+
+    test('posts bearer token and next, then returns the url', () async {
+      final fake = FakeApiHttp(
+        handoffStatus: 200,
+        handoffBody: '{"url":"$handoffUrl"}',
+      );
+      final log = <ApiRequestLog>[];
+      final client = PixelfoxApiClient(
+        accessToken: token,
+        httpClient: fake,
+        requestLog: log,
+      );
+
+      final uri = await client.createWebHandoff();
+
+      expect(uri, Uri.parse(handoffUrl));
+      expect(uri.toString(), isNot(contains(token)));
+      expect(log, hasLength(1));
+      expect(log.single.method, 'POST');
+      expect(log.single.url, ApiConfig.authWebHandoffUrl());
+      expect(log.single.headers['Authorization'], 'Bearer $token');
+      expect(log.single.headers['Content-Type'], 'application/json');
+      expect(log.single.jsonBody, {'next': '/pricing'});
+
+      final request = fake.sent.single;
+      expect(request.method, 'POST');
+      expect(request.url.toString(), ApiConfig.authWebHandoffUrl());
+      expect(request.headers['Authorization'], 'Bearer $token');
+      expect(fake.bodyOf(request), jsonEncode({'next': '/pricing'}));
+    });
+
+    test('non-2xx throws and does not return a url', () async {
+      final fake = FakeApiHttp(
+        handoffStatus: 401,
+        handoffBody: '{"error":"unauthorized","echo":"$token"}',
+      );
+      final client = PixelfoxApiClient(accessToken: token, httpClient: fake);
+
+      Object? thrown;
+      try {
+        await client.createWebHandoff();
+        fail('expected PixelfoxApiException');
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect(thrown, isA<PixelfoxApiException>());
+      final error = thrown as PixelfoxApiException;
+      expect(error.statusCode, 401);
+      expect(error.message, isNot(contains(token)));
+      expect(error.toString(), isNot(contains(token)));
+      expect(fake.sent.single.url.toString(), ApiConfig.authWebHandoffUrl());
+    });
+
+    test('missing or non-http url throws', () async {
+      const bodies = [
+        '{}',
+        '{"url":""}',
+        '{"url":"/pricing"}',
+        '{"url":"javascript:alert(1)"}',
+        'not-json',
+      ];
+      for (final body in bodies) {
+        final fake = FakeApiHttp(handoffStatus: 200, handoffBody: body);
+        final client = PixelfoxApiClient(accessToken: token, httpClient: fake);
+        expect(
+          () => client.createWebHandoff(),
+          throwsA(
+            isA<PixelfoxApiException>()
+                .having((e) => e.statusCode, 'statusCode', 200)
+                .having(
+                  (e) => e.toString(),
+                  'toString',
+                  isNot(contains(token)),
+                ),
+          ),
+        );
+      }
+    });
+  });
 }

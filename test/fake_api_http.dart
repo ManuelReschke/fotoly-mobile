@@ -43,6 +43,8 @@ class FakeApiHttp implements ApiHttp {
     this.tokenStatus = 200,
     this.tokenBody,
     this.logoutStatus = 204,
+    this.handoffStatus = 200,
+    this.handoffBody,
     this.transportError,
   });
 
@@ -91,8 +93,16 @@ class FakeApiHttp implements ApiHttp {
   int tokenStatus;
   String? tokenBody;
   int logoutStatus;
+  int handoffStatus;
+  String? handoffBody;
 
   final List<http.BaseRequest> sent = [];
+
+  /// Body captured for a request this fake recorded. Null for streamed uploads.
+  Object? bodyOf(http.BaseRequest request) {
+    if (request is _RecordedRequest) return request.body;
+    return null;
+  }
 
   static final _imagePath = RegExp(r'/images/([^/]+)$');
   static final _membersPath = RegExp(r'/albums/\d+/members(?:/\d+)?$');
@@ -212,6 +222,13 @@ class FakeApiHttp implements ApiHttp {
     }
     if (url.path.endsWith('/auth/logout')) {
       return http.Response('', logoutStatus);
+    }
+    if (url.path.endsWith('/auth/web-handoff')) {
+      return http.Response(
+        handoffBody ?? '{}',
+        handoffStatus,
+        headers: {'content-type': 'application/json'},
+      );
     }
     final sharing = _sharingWrite('POST', url);
     if (sharing != null) return sharing;

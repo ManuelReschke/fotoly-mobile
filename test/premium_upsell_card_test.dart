@@ -89,6 +89,153 @@ void main() {
     await _pumpSettings(tester, plan: 'premium_max');
     expect(find.text('Unlock Premium'), findsNothing);
   });
+
+  testWidgets(
+    'launchPricingPage opens the handoff url when the client succeeds',
+    (tester) async {
+      const handoff = 'https://fotoly.eu/auth/app?code=once&next=%2Fpricing';
+      final fake = FakeApiHttp(
+        profileBody: profileWithPlan('free'),
+        handoffStatus: 200,
+        handoffBody: '{"url":"$handoff"}',
+      );
+      final auth = await _signedIn(fake);
+
+      final opened = await _openPricing(tester, auth: auth);
+
+      expect(opened, [Uri.parse(handoff)]);
+      expect(opened.single.toString(), isNot(contains('test-api-key-xyz')));
+      expect(opened.single.toString(), isNot(contains('pxls_')));
+      final handoffCall = fake.sent.singleWhere(
+        (request) => request.url.path.endsWith('/auth/web-handoff'),
+      );
+      expect(fake.bodyOf(handoffCall), '{"next":"/pricing"}');
+      expect(find.byType(SnackBar), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'launchPricingPage opens the public pricing page when handoff fails',
+    (tester) async {
+      final fake = FakeApiHttp(
+        profileBody: profileWithPlan('free'),
+        handoffStatus: 502,
+        handoffBody: '{"error":"unavailable"}',
+      );
+      final auth = await _signedIn(fake);
+
+      final opened = await _openPricing(tester, auth: auth);
+
+      expect(opened, [Uri.parse('https://fotoly.eu/pricing')]);
+      expect(
+        fake.sent.where(
+          (request) => request.url.path.endsWith('/auth/web-handoff'),
+        ),
+        isNotEmpty,
+      );
+      expect(find.byType(SnackBar), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'launchPricingPage opens the plain pricing url without an authenticated client',
+    (tester) async {
+      final loggedOut = AuthService(secureStore: MemorySecureStore());
+      expect(loggedOut.client, isNull);
+
+      final opened = await _openPricing(tester, auth: loggedOut);
+
+      expect(opened, [Uri.parse('https://fotoly.eu/pricing')]);
+    },
+  );
+
+  testWidgets(
+    'launchPricingPage opens the plain pricing url when Provider is missing',
+    (tester) async {
+      final opened = await _openPricing(tester);
+
+      expect(opened, [Uri.parse('https://fotoly.eu/pricing')]);
+    },
+  );
+
+  testWidgets(
+    'a closed browser shows the snackbar and does not open the public page',
+    (tester) async {
+      const handoff = 'https://fotoly.eu/auth/app?code=once&next=%2Fpricing';
+      final fake = FakeApiHttp(
+        profileBody: profileWithPlan('free'),
+        handoffBody: '{"url":"$handoff"}',
+      );
+      final auth = await _signedIn(fake);
+
+      final opened = await _openPricing(
+        tester,
+        auth: auth,
+        opened: (_) => false,
+      );
+
+      expect(opened, [Uri.parse(handoff)]);
+      expect(find.text('Could not open the pricing page.'), findsOneWidget);
+    },
+  );
+}
+
+Future<AuthService> _signedIn(FakeApiHttp fake) async {
+  final auth = AuthService(
+    secureStore: MemorySecureStore(),
+    clientFactory: ({apiKey, accessToken}) => PixelfoxApiClient(
+      apiKey: apiKey,
+      accessToken: accessToken,
+      httpClient: fake,
+    ),
+  );
+  final loggedIn = await auth.loginWithApiKey('test-api-key-xyz');
+  expect(loggedIn, isTrue);
+  return auth;
+}
+
+Future<List<Uri>> _openPricing(
+  WidgetTester tester, {
+  AuthService? auth,
+  bool Function(Uri url)? opened,
+}) async {
+  final launched = <Uri>[];
+  final locale = LocaleController(prefs: MemoryPrefsStore());
+  await locale.setLocale(AppLocale.en);
+  await tester.binding.setSurfaceSize(const Size(390, 800));
+  addTearDown(() => tester.binding.setSurfaceSize(null));
+
+  await tester.pumpWidget(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<LocaleController>.value(value: locale),
+        if (auth != null)
+          ChangeNotifierProvider<AuthService>.value(value: auth),
+      ],
+      child: MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () {
+                launchPricingPage(
+                  context,
+                  launch: (url) async {
+                    launched.add(url);
+                    return opened?.call(url) ?? true;
+                  },
+                );
+              },
+              child: const Text('open-pricing'),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  await tester.tap(find.text('open-pricing'));
+  await tester.pumpAndSettle();
+  return launched;
 }
 
 void _noop() {}

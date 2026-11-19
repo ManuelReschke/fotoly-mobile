@@ -54,6 +54,7 @@ class ApiConfig {
   static String authRegisterUrl() => '$apiRoot/auth/register';
   static String authTokenUrl() => '$apiRoot/auth/token';
   static String authLogoutUrl() => '$apiRoot/auth/logout';
+  static String authWebHandoffUrl() => '$apiRoot/auth/web-handoff';
   static String authProviderStartUrl(String provider) =>
       '$apiRoot/auth/$provider/start';
 }

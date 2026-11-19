@@ -1,24 +1,52 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../config/api_config.dart';
 import '../config/app_brand.dart';
 import '../l10n/l10n_scope.dart';
+import '../services/auth_service.dart';
 
-/// Opens the brand pricing page. Shows a snackbar when the browser stays closed.
-Future<void> launchPricingPage(BuildContext context) async {
+/// Opens a pricing URL outside the app. Tests pass their own launcher.
+typedef PricingPageLauncher = Future<bool> Function(Uri url);
+
+Future<bool> _launchPricingUrl(Uri url) {
+  return launchUrl(url, mode: LaunchMode.externalApplication);
+}
+
+/// Opens pricing in the browser. A signed-in client gets a one-time handoff
+/// URL so the app token is never placed in the address bar. A missing
+/// session or a failed handoff opens the public pricing page instead.
+/// The chosen URL is launched once; a closed browser shows a snackbar.
+Future<void> launchPricingPage(
+  BuildContext context, {
+  PricingPageLauncher? launch,
+}) async {
   final messenger = ScaffoldMessenger.maybeOf(context);
   final message = context.l10nRead.premiumUpsellOpenFailed;
-  try {
-    final opened = await launchUrl(
-      ApiConfig.pricingUrl,
-      mode: LaunchMode.externalApplication,
-    );
-    if (!opened) {
-      messenger?.showSnackBar(SnackBar(content: Text(message)));
-    }
-  } catch (_) {
+  final open = launch ?? _launchPricingUrl;
+  final target = await _pricingHandoffUri(context) ?? ApiConfig.pricingUrl;
+  final opened = await _openPricingUri(open, target);
+  if (!opened) {
     messenger?.showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+Future<Uri?> _pricingHandoffUri(BuildContext context) async {
+  final client = context.read<AuthService?>()?.client;
+  if (client == null) return null;
+  try {
+    return await client.createWebHandoff(next: '/pricing');
+  } catch (_) {
+    return null;
+  }
+}
+
+Future<bool> _openPricingUri(PricingPageLauncher open, Uri url) async {
+  try {
+    return await open(url);
+  } catch (_) {
+    return false;
   }
 }
 
