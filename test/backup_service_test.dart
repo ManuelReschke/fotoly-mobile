@@ -901,6 +901,75 @@ void main() {
     });
   });
 
+  test(
+    'each upload moves its file without reclassifying the inventory',
+    () async {
+      final settings = SettingsService(prefs: MemoryPrefsStore());
+      await settings.setFolders(['/photos']);
+      final files = List.generate(
+        12,
+        (i) => LocalImageFile(
+          path: '/photos/$i.jpg',
+          name: '$i.jpg',
+          sizeBytes: 4,
+        ),
+      );
+      final ledger = _CountingLedger(prefs: MemoryPrefsStore());
+      final fake = FakeApiHttp(
+        sessionStatus: 200,
+        sessionBody: sessionFixture,
+        uploadStatus: 200,
+        uploadBody: uploadFixture,
+      );
+      final backup = buildBackup(
+        settings: settings,
+        scanner: FakeFileScanner(files),
+        fake: fake,
+        ledger: ledger,
+      );
+      addTearDown(backup.dispose);
+      final securedDuringRun = <int>{};
+      backup.addListener(() {
+        if (backup.running && backup.status.total == files.length) {
+          securedDuringRun.add(backup.securedCount);
+          expect(backup.pendingCount + backup.securedCount, files.length);
+        }
+      });
+
+      final result = await backup.startBackup();
+
+      expect(result.completed, files.length);
+      expect(securedDuringRun, containsAll(List.generate(13, (i) => i)));
+      expect(ledger.classifications, files.length * 2);
+      expect(backup.pendingImages, isEmpty);
+    },
+  );
+
+  test('an unchanged automatic scan skips inventory classification', () async {
+    final folder = await Directory.systemTemp.createTemp('fotoly_inventory_');
+    addTearDown(() => folder.delete(recursive: true));
+    await File('${folder.path}/photo.jpg').writeAsBytes([1]);
+    final settings = SettingsService(prefs: MemoryPrefsStore());
+    await settings.setFolders([folder.path]);
+    final ledger = _CountingLedger(prefs: MemoryPrefsStore());
+    final backup = BackupService(
+      settings: settings,
+      ledger: ledger,
+      clientProvider: () => throw StateError('no upload'),
+    );
+    addTearDown(backup.dispose);
+
+    await backup.refreshInventory();
+    expect(ledger.classifications, 1);
+    await backup.autoScanTickForTest(throttle: false);
+    expect(ledger.classifications, 1);
+
+    await File('${folder.path}/photo.jpg').writeAsBytes([1, 2]);
+    await backup.refreshInventory();
+    expect(backup.pendingImages.single.sizeBytes, 2);
+    expect(ledger.classifications, 2);
+  });
+
   test('backup writes the ledger once for a short run', () async {
     final prefs = _CountingPrefs();
     final settings = SettingsService(prefs: MemoryPrefsStore());
@@ -1217,6 +1286,18 @@ void main() {
     expect(fake.sent, isEmpty);
     backup.dispose();
   });
+}
+
+class _CountingLedger extends BackupLedger {
+  _CountingLedger({required super.prefs});
+
+  int classifications = 0;
+
+  @override
+  bool isBackedUp(LocalImageFile file) {
+    classifications++;
+    return super.isBackedUp(file);
+  }
 }
 
 class _CountingPrefs implements PrefsStore {

@@ -135,6 +135,59 @@ void main() {
     expect(buttonRect.height, greaterThan(56));
   }
 
+  testWidgets('the backup button starts the job with one preparatory scan', (
+    tester,
+  ) async {
+    final locale = LocaleController(prefs: MemoryPrefsStore());
+    await locale.setLocale(AppLocale.de);
+    final settings = SettingsService(prefs: MemoryPrefsStore());
+    await settings.setFolders(['/photos']);
+    final auth = AuthService(secureStore: MemorySecureStore());
+    final scanner = _CountingScanner();
+    final backup = BackupService(
+      settings: settings,
+      scanner: scanner,
+      ledger: BackupLedger(prefs: MemoryPrefsStore()),
+      clientProvider: () {
+        expect(scanner.calls, 1);
+        return PixelfoxApiClient(
+          apiKey: 'k',
+          httpClient: FakeApiHttp(
+            sessionStatus: 200,
+            sessionBody: sessionFixture,
+            uploadStatus: 200,
+            uploadBody: uploadFixture,
+          ),
+        );
+      },
+      readBytes: (_) async => [1],
+    );
+    addTearDown(() async {
+      await tester.pumpWidget(const SizedBox.shrink());
+      backup.dispose();
+      auth.dispose();
+      settings.dispose();
+      locale.dispose();
+    });
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<LocaleController>.value(value: locale),
+          ChangeNotifierProvider<AuthService>.value(value: auth),
+          ChangeNotifierProvider<SettingsService>.value(value: settings),
+          ChangeNotifierProvider<BackupService>.value(value: backup),
+        ],
+        child: MaterialApp(theme: AppTheme.dark(), home: const HomeScreen()),
+      ),
+    );
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Backup starten'));
+    await tester.pumpAndSettle();
+
+    expect(backup.status.isSuccess, isTrue);
+    expect(scanner.calls, 2);
+  });
+
   testWidgets('Premium freischalten stays inside the button beside reset', (
     tester,
   ) async {
@@ -167,4 +220,23 @@ void main() {
     expectLabelFullyInsideFilledButton(tester, 'Für keinen Tarif klein genug');
     expect(tester.takeException(), isNull);
   });
+}
+
+class _CountingScanner implements FileScanner {
+  int calls = 0;
+
+  @override
+  Future<List<LocalImageFile>> scan(
+    List<String> folders, {
+    bool recursive = true,
+  }) async {
+    calls++;
+    return const [
+      LocalImageFile(
+        path: '/photos/photo.jpg',
+        name: 'photo.jpg',
+        sizeBytes: 1,
+      ),
+    ];
+  }
 }

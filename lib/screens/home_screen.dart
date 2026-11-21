@@ -87,26 +87,19 @@ class _HomeScreenState extends State<HomeScreen> {
     final allowed = await ensureMediaAccessOrSnack(context, strings: s);
     if (!mounted || !allowed) return;
 
-    await backup.refreshInventory();
+    final result = await backup.startBackup();
     if (!mounted) return;
-
-    // Scan failures (access/path) must not be labeled as "no photos".
-    if (backup.status.phase == BackupPhase.failed) {
+    if (result.phase == BackupPhase.failed && result.total == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(localizeBackupError(s, backup.status.message))),
+        SnackBar(content: Text(localizeBackupError(s, result.message))),
       );
       return;
     }
 
-    if (backup.allImages.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(s.snackNoImagesFound)));
-      return;
-    }
-
-    if (backup.pendingCount == 0) {
-      if (backup.tooLargeCount > 0) return;
+    if (result.isIdle &&
+        backup.hasImages &&
+        backup.pendingCount == 0 &&
+        backup.tooLargeCount == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -122,23 +115,11 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       );
-      return;
-    }
-
-    final result = await backup.startBackup();
-    if (!mounted) return;
-    if (result.message != null &&
-        result.phase == BackupPhase.failed &&
-        result.total == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(localizeBackupError(s, result.message))),
-      );
     }
   }
 
   Future<void> _onRefreshPressed(BackupService backup) async {
-    // scanInProgress includes quiet auto/resume scans (scanning is UI-only).
-    if (backup.running || backup.scanInProgress) return;
+    if (backup.running || backup.scanning) return;
     final s = context.l10nRead;
     final allowed = await ensureMediaAccessOrSnack(context, strings: s);
     if (!mounted || !allowed) return;
@@ -171,27 +152,38 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final s = context.l10n;
     final auth = context.watch<AuthService>();
-    final backup = context.watch<BackupService>();
+    final backup = context.read<BackupService>();
+    final controls = context.select((BackupService service) {
+      final running = service.running;
+      final pending = running ? 0 : service.pendingCount;
+      final tooLarge = running ? 0 : service.tooLargeCount;
+      return (
+        running: running,
+        scanning: service.scanning,
+        phase: service.status.phase,
+        pending: pending,
+        tooLarge: tooLarge,
+        plan: pending == 0 && tooLarge > 0 ? service.oversizedUploadPlan : null,
+        hasInventory: service.inventoryLoaded && service.hasImages,
+      );
+    });
     final settings = context.watch<SettingsService>();
-    final status = backup.status;
-    final hasPending = backup.pendingCount > 0;
-    final offer = offerForOversizedFiles(backup.tooLargeImages);
-    final unlockPlan = !hasPending && !backup.running && offer.hasUpsell;
+    final hasPending = controls.pending > 0;
+    final unlockPlan = !hasPending && controls.plan != null;
     final blockedOnly =
-        !hasPending && backup.tooLargeCount > 0 && !offer.hasUpsell;
+        !hasPending && controls.tooLarge > 0 && controls.plan == null;
     final allSecured =
         settings.hasFolders &&
-        backup.inventoryLoaded &&
-        backup.allImages.isNotEmpty &&
+        controls.hasInventory &&
         !hasPending &&
-        backup.tooLargeCount == 0 &&
-        !backup.running;
-    final actionLabel = backup.running
+        controls.tooLarge == 0 &&
+        !controls.running;
+    final actionLabel = controls.running
         ? s.backingUp
         : hasPending
-        ? s.secureNewCount(backup.pendingCount)
+        ? s.secureNewCount(controls.pending)
         : unlockPlan
-        ? (offer.plan == HigherUploadPlan.premiumMax
+        ? (controls.plan == HigherUploadPlan.premiumMax
               ? s.premiumMaxUpsellCta
               : s.premiumUpsellCta)
         : blockedOnly
@@ -207,14 +199,14 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             tooltip: s.refreshScanTooltip,
             icon: const Icon(Icons.refresh),
-            onPressed: backup.running || backup.scanInProgress
+            onPressed: controls.running || controls.scanning
                 ? null
                 : () => _onRefreshPressed(backup),
           ),
           IconButton(
             tooltip: s.settingsTooltip,
             icon: const Icon(Icons.settings_outlined),
-            onPressed: backup.running
+            onPressed: controls.running
                 ? null
                 : () => _openSettingsThenRefresh(backup),
           ),
@@ -226,51 +218,70 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             children: [
               if (auth.profile != null) ...[
-                HomeWelcomeHeader(
-                  username: auth.profile!.username,
-                  email: auth.profile!.email,
-                  pendingCount: backup.pendingCount,
-                  securedCount: backup.securedCount,
-                  hasFolders: settings.hasFolders,
-                  oversizedCount: backup.tooLargeCount,
+                Selector<
+                  BackupService,
+                  ({int pending, int secured, int oversized})
+                >(
+                  selector: (_, service) => (
+                    pending: service.pendingCount,
+                    secured: service.securedCount,
+                    oversized: service.tooLargeCount,
+                  ),
+                  builder: (context, counts, _) => HomeWelcomeHeader(
+                    username: auth.profile!.username,
+                    email: auth.profile!.email,
+                    pendingCount: counts.pending,
+                    securedCount: counts.secured,
+                    hasFolders: settings.hasFolders,
+                    oversizedCount: counts.oversized,
+                  ),
                 ),
                 const SizedBox(height: 16),
               ],
               Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final statusView = BackupStatusView(
-                      status: status,
-                      pending: backup.pendingImages,
-                      tooLarge: backup.tooLargeImages,
-                      maxUploadBytes: auth.profile?.maxUploadBytes,
-                      onUnlockPlan: () => launchPricingPage(context),
-                      securedCount: backup.securedCount,
-                      scanning: backup.scanning,
-                      onSecureCamera: !settings.hasFolders && !backup.running
-                          ? () => _addStandardCameraFolder(backup)
-                          : null,
-                      securingCamera: _addingCameraFolder,
-                      onChooseFolders: !settings.hasFolders && !backup.running
-                          ? () => _openSettingsThenRefresh(backup)
-                          : null,
-                    );
-                    // Pending photos scroll inside the card. This branch stays
-                    // out of the page scroll view so the start page does not grow.
-                    final pendingOverview =
-                        status.phase == BackupPhase.idle &&
-                        !backup.scanning &&
-                        backup.pendingImages.isNotEmpty;
-                    if (pendingOverview) return statusView;
-                    return SingleChildScrollView(
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minHeight: constraints.maxHeight,
+                child: Consumer<BackupService>(
+                  builder: (context, backup, _) => LayoutBuilder(
+                    builder: (context, constraints) {
+                      final status = backup.status;
+                      final statusView = BackupStatusView(
+                        status: status,
+                        pending: status.isIdle
+                            ? backup.pendingImages
+                            : const [],
+                        tooLarge: status.isWorking
+                            ? const []
+                            : backup.tooLargeImages,
+                        maxUploadBytes: auth.profile?.maxUploadBytes,
+                        onUnlockPlan: () => launchPricingPage(context),
+                        securedCount: status.isWorking
+                            ? 0
+                            : backup.securedCount,
+                        scanning: backup.scanning,
+                        onSecureCamera: !settings.hasFolders && !backup.running
+                            ? () => _addStandardCameraFolder(backup)
+                            : null,
+                        securingCamera: _addingCameraFolder,
+                        onChooseFolders: !settings.hasFolders && !backup.running
+                            ? () => _openSettingsThenRefresh(backup)
+                            : null,
+                      );
+                      // Pending photos scroll inside the card. This branch stays
+                      // out of the page scroll view so the start page does not grow.
+                      final pendingOverview =
+                          status.phase == BackupPhase.idle &&
+                          !backup.scanning &&
+                          backup.pendingCount > 0;
+                      if (pendingOverview) return statusView;
+                      return SingleChildScrollView(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: constraints.maxHeight,
+                          ),
+                          child: Center(child: statusView),
                         ),
-                        child: Center(child: statusView),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
               ),
               if (settings.hasFolders) ...[
@@ -307,13 +318,13 @@ class _HomeScreenState extends State<HomeScreen> {
                               borderRadius: BorderRadius.circular(16),
                             ),
                           ),
-                          onPressed: backup.running || blockedOnly
+                          onPressed: controls.running || blockedOnly
                               ? null
                               : unlockPlan
                               ? () => launchPricingPage(context)
                               : () => _onBackupPressed(backup, settings),
                           icon: Icon(
-                            backup.running
+                            controls.running
                                 ? Icons.hourglass_top
                                 : unlockPlan
                                 ? Icons.workspace_premium_outlined
@@ -325,11 +336,11 @@ class _HomeScreenState extends State<HomeScreen> {
                           label: Text(actionLabel, textAlign: TextAlign.center),
                         ),
                       ),
-                      if (status.isSuccess ||
-                          status.phase.name == 'failed') ...[
+                      if (controls.phase == BackupPhase.success ||
+                          controls.phase == BackupPhase.failed) ...[
                         const SizedBox(width: 12),
                         OutlinedButton(
-                          onPressed: backup.running ? null : backup.resetIdle,
+                          onPressed: controls.running ? null : backup.resetIdle,
                           style: OutlinedButton.styleFrom(
                             minimumSize: const Size(0, 56),
                             padding: const EdgeInsets.symmetric(

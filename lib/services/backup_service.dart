@@ -101,9 +101,11 @@ class BackupService extends ChangeNotifier {
   final List<String> _failedPaths = [];
 
   List<LocalImageFile> _allImages = [];
-  List<LocalImageFile> _pending = [];
+  Set<LocalImageFile> _pending = {};
   List<LocalImageFile> _tooLarge = [];
   List<LocalImageFile> _alreadySecured = [];
+  int? _classifiedUserId;
+  int? _classifiedProfileMax;
   bool _inventoryLoaded = false;
 
   /// True while any inventory scan is in flight (including quiet).
@@ -127,6 +129,7 @@ class BackupService extends ChangeNotifier {
   bool _inventoryPending = false;
   bool _inventoryPendingQuiet = true;
   bool _inventoryPendingThrottle = true;
+  bool _inventoryPendingIncremental = true;
 
   bool get running => _running;
 
@@ -157,19 +160,28 @@ class BackupService extends ChangeNotifier {
   /// All images currently under selected folders.
   List<LocalImageFile> get allImages => List.unmodifiable(_allImages);
 
+  bool get hasImages => _allImages.isNotEmpty;
+
   /// Images not yet uploaded that still fit the current plan.
   List<LocalImageFile> get pendingImages => List.unmodifiable(_pending);
 
   /// Images the current plan will not accept. They are not pending.
-  List<LocalImageFile> get tooLargeImages => List.unmodifiable(_tooLarge);
+  List<LocalImageFile> get tooLargeImages => _inPathOrder(_tooLarge);
 
   /// Images that match a ledger entry (path + size).
   List<LocalImageFile> get alreadySecuredImages =>
-      List.unmodifiable(_alreadySecured);
+      _inPathOrder(_alreadySecured);
+
+  List<LocalImageFile> _inPathOrder(List<LocalImageFile> files) =>
+      List.unmodifiable(
+        files.toList()..sort((a, b) => a.path.compareTo(b.path)),
+      );
 
   int get pendingCount => _pending.length;
   int get tooLargeCount => _tooLarge.length;
   int get securedCount => _alreadySecured.length;
+  HigherUploadPlan? get oversizedUploadPlan =>
+      offerForOversizedFiles(_tooLarge).plan;
 
   BackupStatus get status => deriveBackupStatus(
     running: _running,
@@ -200,8 +212,12 @@ class BackupService extends ChangeNotifier {
     final next = maxUploadBytes?.call();
     if (next == _seenPlanMax) return;
     _seenPlanMax = next;
-    if (_running) return;
-    unawaited(refreshInventory(quiet: true, throttle: false));
+    if (_running) {
+      _applyInventory(_allImages);
+      notifyListeners();
+      return;
+    }
+    unawaited(refreshInventory(quiet: true, incremental: true));
   }
 
   /// Start periodic folder scans while the app is open (default every 30s).
@@ -235,7 +251,7 @@ class BackupService extends ChangeNotifier {
   Future<void> _onAutoScanTick() async {
     _autoScanTicks++;
     // Quiet + throttled: no full-screen spinner; skip if busy or recent.
-    await refreshInventory(quiet: true, throttle: true);
+    await refreshInventory(quiet: true, throttle: true, incremental: true);
   }
 
   /// Exposed for tests — runs one auto-scan cycle without waiting on the timer.
@@ -244,7 +260,7 @@ class BackupService extends ChangeNotifier {
   @visibleForTesting
   Future<void> autoScanTickForTest({bool throttle = true}) async {
     _autoScanTicks++;
-    await refreshInventory(quiet: true, throttle: throttle);
+    await refreshInventory(quiet: true, throttle: throttle, incremental: true);
   }
 
   /// Enumerate only selected folders (testable without uploading).
@@ -264,12 +280,17 @@ class BackupService extends ChangeNotifier {
     return DateTime.now().difference(last) < minAutoInventoryInterval;
   }
 
-  void _mergeInventoryRequest({required bool quiet, required bool throttle}) {
+  void _mergeInventoryRequest({
+    required bool quiet,
+    required bool throttle,
+    required bool incremental,
+  }) {
     _inventoryPending = true;
     // Non-quiet / non-throttled wins so manual refresh and folder changes
     // are not diluted by a concurrent auto-scan request.
     if (!quiet) _inventoryPendingQuiet = false;
     if (!throttle) _inventoryPendingThrottle = false;
+    if (!incremental) _inventoryPendingIncremental = false;
   }
 
   /// Rescan folders and split into pending vs already secured.
@@ -281,6 +302,8 @@ class BackupService extends ChangeNotifier {
   /// [throttle] skips work when inventory was refreshed very recently
   /// (resume / auto-scan only — not manual refresh).
   ///
+  /// [incremental] allows reusing directories whose metadata has not changed.
+  ///
   /// Concurrent callers are coalesced: while a scan is in flight, further
   /// requests merge flags and wait for a drain that always runs the latest
   /// non-throttled / non-quiet need (so folder changes are not dropped).
@@ -290,6 +313,7 @@ class BackupService extends ChangeNotifier {
   Future<void> refreshInventory({
     bool quiet = false,
     bool throttle = false,
+    bool incremental = false,
   }) async {
     if (_running) return;
 
@@ -301,7 +325,11 @@ class BackupService extends ChangeNotifier {
       return;
     }
 
-    _mergeInventoryRequest(quiet: quiet, throttle: throttle);
+    _mergeInventoryRequest(
+      quiet: quiet,
+      throttle: throttle,
+      incremental: incremental,
+    );
 
     while (true) {
       final existing = _activeInventory;
@@ -329,43 +357,59 @@ class BackupService extends ChangeNotifier {
     while (_inventoryPending && !_running) {
       final quiet = _inventoryPendingQuiet;
       final throttle = _inventoryPendingThrottle;
+      final incremental = _inventoryPendingIncremental;
       _inventoryPending = false;
       _inventoryPendingQuiet = true;
       _inventoryPendingThrottle = true;
+      _inventoryPendingIncremental = true;
 
       if (throttle && shouldThrottleAutoInventory) {
         continue;
       }
 
-      await _performInventoryScan(quiet: quiet);
+      await _performInventoryScan(quiet: quiet, incremental: incremental);
     }
   }
 
-  Future<void> _performInventoryScan({required bool quiet}) async {
+  Future<void> _performInventoryScan({
+    required bool quiet,
+    required bool incremental,
+  }) async {
     _scanInProgress = true;
     _showScanningUi = !quiet;
     if (_showScanningUi) notifyListeners();
 
-    final prevPending = _fingerprintList(_pending);
-    final prevTooLarge = _fingerprintList(_tooLarge);
-    final prevSecured = _fingerprintList(_alreadySecured);
     final prevError = _errorMessage;
+    final wasLoaded = _inventoryLoaded;
     final wasShowingUi = _showScanningUi;
+    var changed = false;
     var succeeded = false;
 
     try {
       await _ensureLedger();
       final folders = _settings.folders;
-      if (folders.isEmpty) {
-        _allImages = [];
-        _pending = [];
-        _tooLarge = [];
-        _alreadySecured = [];
-      } else {
-        final all = await _scanner.scan(folders);
-        // Backup may have started while we awaited the scanner — discard.
-        if (_running) return;
+      final scanner = _scanner;
+      final all = folders.isEmpty && scanner is! IoFileScanner
+          ? const <LocalImageFile>[]
+          : incremental && scanner is IoFileScanner
+          ? await scanner.scanIncrementally(folders)
+          : await scanner.scan(folders);
+      if (_running) return;
+
+      if (!incremental ||
+          scanner is! IoFileScanner ||
+          !identical(all, _allImages) ||
+          _classifiedUserId != _accountUserId?.call() ||
+          _classifiedProfileMax != maxUploadBytes?.call()) {
+        final prevPending = _pending;
+        final prevTooLarge = _tooLarge;
+        final prevSecured = _alreadySecured;
         _applyInventory(all);
+        changed =
+            !wasShowingUi &&
+            (!_sameFiles(prevPending, _pending) ||
+                !_sameFiles(prevTooLarge, _tooLarge) ||
+                !_sameFiles(prevSecured, _alreadySecured));
       }
       _inventoryLoaded = true;
       // Clear sticky inventory / prior job errors after a successful scan.
@@ -382,14 +426,13 @@ class BackupService extends ChangeNotifier {
       if (succeeded) {
         _lastInventoryFinishedAt = DateTime.now();
       }
-      final changed =
-          prevPending != _fingerprintList(_pending) ||
-          prevTooLarge != _fingerprintList(_tooLarge) ||
-          prevSecured != _fingerprintList(_alreadySecured) ||
-          prevError != _errorMessage;
       // Always notify when we had shown the spinner (to clear it), or when
       // results/errors changed. Pure quiet no-ops stay silent.
-      if (wasShowingUi || changed || _errorMessage != null) {
+      if (wasShowingUi ||
+          changed ||
+          wasLoaded != _inventoryLoaded ||
+          prevError != _errorMessage ||
+          _errorMessage != null) {
         notifyListeners();
       }
     }
@@ -402,22 +445,20 @@ class BackupService extends ChangeNotifier {
     return BackupErrorCodes.scanFailed;
   }
 
-  /// Change detection for quiet scans. A full path string for every photo is
-  /// large enough to hitch the UI; a mix of count, path, and size is enough.
-  int _fingerprintList(List<LocalImageFile> files) {
-    var hash = 0x811c9dc5;
-    hash = _mixHash(hash, files.length);
-    for (final file in files) {
-      hash = _mixHash(hash, file.path.hashCode);
-      hash = _mixHash(hash, file.sizeBytes);
+  bool _sameFiles(
+    Iterable<LocalImageFile> before,
+    Iterable<LocalImageFile> after,
+  ) {
+    if (before.length != after.length) return false;
+    final previous = before.iterator;
+    for (final file in after) {
+      previous.moveNext();
+      final other = previous.current;
+      if (file.path != other.path || file.sizeBytes != other.sizeBytes) {
+        return false;
+      }
     }
-    return hash;
-  }
-
-  int _mixHash(int hash, int value) {
-    hash ^= value & 0x7fffffff;
-    hash = (hash * 0x01000193) & 0x7fffffff;
-    return hash;
+    return true;
   }
 
   /// Profile cap, tightened by a server rejection until that cap changes.
@@ -475,13 +516,15 @@ class BackupService extends ChangeNotifier {
 
   void _applyInventory(List<LocalImageFile> all) {
     _allImages = all;
+    _classifiedUserId = _accountUserId?.call();
+    _classifiedProfileMax = maxUploadBytes?.call();
     final groups = splitBackupFiles(
       files: all,
       isBackedUp: _ledger.isBackedUp,
       maxUploadBytes: _effectiveMaxUploadBytes(),
       isBlocked: (file) => _blockedFingerprints.contains(fingerprintFor(file)),
     );
-    _pending = groups.pending;
+    _pending = groups.pending.toSet();
     _tooLarge = groups.tooLarge;
     _alreadySecured = groups.secured;
   }
@@ -671,6 +714,7 @@ class BackupService extends ChangeNotifier {
     _inventoryPending = false;
     _inventoryPendingQuiet = true;
     _inventoryPendingThrottle = true;
+    _inventoryPendingIncremental = true;
 
     final folders = _settings.folders;
     if (folders.isEmpty) {
@@ -736,12 +780,21 @@ class BackupService extends ChangeNotifier {
           );
           _completed++;
           uploaded = true;
-          // Keep pending list roughly in sync for UI mid-run.
-          _applyInventory(_allImages);
+          // If the size changed on disk, the final scan will reconcile it.
+          if (uploadedFile.recorded.sizeBytes == file.sizeBytes &&
+              (_pending.remove(file) || _tooLarge.remove(file))) {
+            _alreadySecured.add(file);
+          }
         } catch (e) {
           if (isUploadTooLargeError(e)) {
+            final previousCap = _effectiveMaxUploadBytes();
             _noteTooLarge(file, e);
-            _applyInventory(_allImages);
+            if (previousCap != _effectiveMaxUploadBytes()) {
+              _applyInventory(_allImages);
+            } else if (_blockedFingerprints.contains(fingerprintFor(file)) &&
+                _pending.remove(file)) {
+              _tooLarge.add(file);
+            }
             if (_total > 0) _total--;
           } else {
             _failed++;
@@ -753,6 +806,8 @@ class BackupService extends ChangeNotifier {
       }
     } catch (e) {
       _errorMessage = _mapScanError(e);
+      _running = false;
+      return status;
     } finally {
       _running = false;
       _currentFileName = null;

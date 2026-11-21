@@ -225,7 +225,11 @@ class _AuthenticatedShellState extends State<_AuthenticatedShell>
     // quiet: never show “Looking for photos…” on resume.
     // throttle: skip if we just scanned successfully (failed scans do not
     // arm the throttle — see BackupService._performInventoryScan).
-    await backup.refreshInventory(quiet: true, throttle: true);
+    await backup.refreshInventory(
+      quiet: true,
+      throttle: true,
+      incremental: true,
+    );
   }
 
   @override
