@@ -53,6 +53,7 @@ class GalleryService extends ChangeNotifier {
   Future<void>? _refreshLoop;
   Future<void>? _loadMoreFuture;
   bool _refreshAgain = false;
+  bool _disposed = false;
   int _epoch = 0;
 
   List<PixelfoxImage> get items => List.unmodifiable(_items);
@@ -63,6 +64,13 @@ class GalleryService extends ChangeNotifier {
   String? get error => _error;
   String? get snackMessage => _snackMessage;
   GallerySort get order => _order;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _epoch++;
+    super.dispose();
+  }
 
   void clearSnack() {
     if (_snackMessage == null) return;
@@ -97,6 +105,7 @@ class GalleryService extends ChangeNotifier {
   }
 
   Future<void> refresh() {
+    if (_disposed) return Future<void>.value();
     _refreshAgain = true;
     final running = _refreshLoop;
     if (running != null) return running;
@@ -107,7 +116,7 @@ class GalleryService extends ChangeNotifier {
 
   Future<void> _drainRefreshes() async {
     try {
-      while (true) {
+      while (!_disposed) {
         if (!_refreshAgain) {
           await Future<void>.value();
           if (!_refreshAgain) return;
@@ -124,6 +133,7 @@ class GalleryService extends ChangeNotifier {
   Future<void> _refreshOnce() async {
     final pendingMore = _loadMoreFuture;
     if (pendingMore != null) await pendingMore;
+    if (_disposed) return;
     final epoch = _epoch;
     if (!_loaded) {
       _loading = true;
@@ -142,7 +152,13 @@ class GalleryService extends ChangeNotifier {
 
   Future<void> loadMore() async {
     await _loadSavedOrder();
-    if (!_hasMore || _loading || _loadingMore || _refreshLoop != null) return;
+    if (_disposed ||
+        !_hasMore ||
+        _loading ||
+        _loadingMore ||
+        _refreshLoop != null) {
+      return;
+    }
     final epoch = _epoch;
     _loadingMore = true;
     notifyListeners();
@@ -157,7 +173,7 @@ class GalleryService extends ChangeNotifier {
 
   Future<void> setOrder(GallerySort order) async {
     await _loadSavedOrder();
-    if (_order == order) return;
+    if (_disposed || _order == order) return;
     _order = order;
     // Cursor is only valid for the sort that produced it.
     final epoch = ++_epoch;
@@ -182,9 +198,11 @@ class GalleryService extends ChangeNotifier {
   }
 
   Future<void> _fetchPage({required int epoch, required bool append}) async {
-    final client = _clientProvider();
+    PixelfoxApiClient? client;
     try {
-      final page = await client
+      final requestClient = _clientProvider();
+      client = requestClient;
+      final page = await requestClient
           .listImages(
             cursor: append ? _nextCursor : null,
             albumId: albumId,
@@ -193,7 +211,7 @@ class GalleryService extends ChangeNotifier {
           .timeout(
             kReachabilityTimeout,
             onTimeout: () {
-              client.close();
+              requestClient.close();
               throw TimeoutException('gallery', kReachabilityTimeout);
             },
           );
@@ -220,7 +238,7 @@ class GalleryService extends ChangeNotifier {
         }
       }
     } finally {
-      client.close();
+      client?.close();
     }
     if (epoch != _epoch) return;
     _loading = false;

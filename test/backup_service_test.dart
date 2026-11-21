@@ -176,6 +176,46 @@ void main() {
     expect(fresh.isBackedUp(file), isTrue);
   });
 
+  test('backup waits for an account ledger that is already loading', () async {
+    final prefs = _DelayedLedgerPrefs(7);
+    final settings = SettingsService(prefs: MemoryPrefsStore());
+    await settings.setFolders(['/photos']);
+    const file = LocalImageFile(
+      path: '/photos/old.jpg',
+      name: 'old.jpg',
+      sizeBytes: 4,
+    );
+    final seeded = BackupLedger(prefs: prefs);
+    await seeded.markUploaded(file, imageUuid: 'already');
+    final saved = await prefs.getString(kBackupLedgerKey);
+    await prefs.setString(backupLedgerKeyForUser(7), saved!);
+
+    final ledger = BackupLedger(prefs: prefs);
+    final fake = FakeApiHttp(
+      sessionBody: sessionFixture,
+      uploadBody: uploadFixture,
+    );
+    final backup = buildBackup(
+      settings: settings,
+      scanner: FakeFileScanner([file]),
+      fake: fake,
+      ledger: ledger,
+      accountUserId: () => 7,
+    );
+    final loading = ledger.ensureUser(7);
+    final job = backup.startBackup();
+    await Future<void>.delayed(Duration.zero);
+    final requestsWhileLoading = fake.sent.length;
+    prefs.release.complete();
+    await loading;
+    final result = await job;
+
+    expect(requestsWhileLoading, 0);
+    expect(fake.sent, isEmpty);
+    expect(result.completed, 0);
+    expect(backup.securedCount, 1);
+  });
+
   test('skips already secured files and only uploads new ones', () async {
     final prefs = MemoryPrefsStore();
     final settings = SettingsService(prefs: prefs);
@@ -607,6 +647,43 @@ void main() {
   );
 
   group('fullSyncRemote', () {
+    test('returns busy while backup is still preparing', () async {
+      final prefs = _DelayedLedgerPrefs(7);
+      final settings = SettingsService(prefs: MemoryPrefsStore());
+      await settings.setFolders(['/photos']);
+      final backup = buildBackup(
+        settings: settings,
+        scanner: FakeFileScanner([]),
+        fake: FakeApiHttp(),
+        ledger: BackupLedger(prefs: prefs),
+        accountUserId: () => 7,
+      );
+      final job = backup.startBackup();
+      final sync = backup.fullSyncRemote();
+      prefs.release.complete();
+      await job;
+
+      expect((await sync).busy, isTrue);
+      expect((await backup.fullSyncRemote()).busy, isFalse);
+    });
+
+    test('only one full sync starts while the ledger loads', () async {
+      final prefs = _DelayedLedgerPrefs(7);
+      final backup = buildBackup(
+        settings: SettingsService(prefs: MemoryPrefsStore()),
+        scanner: FakeFileScanner([]),
+        fake: FakeApiHttp(),
+        ledger: BackupLedger(prefs: prefs),
+        accountUserId: () => 7,
+      );
+      final first = backup.fullSyncRemote();
+      final second = backup.fullSyncRemote();
+      prefs.release.complete();
+
+      expect((await first).busy, isFalse);
+      expect((await second).busy, isTrue);
+    });
+
     test('removes only missing remote images; keeps no-uuid entries', () async {
       final prefs = MemoryPrefsStore();
       final settings = SettingsService(prefs: prefs);
@@ -1157,6 +1234,19 @@ class _CountingPrefs implements PrefsStore {
 
   @override
   Future<void> remove(String key) => inner.remove(key);
+}
+
+class _DelayedLedgerPrefs extends MemoryPrefsStore {
+  _DelayedLedgerPrefs(this.userId);
+
+  final int userId;
+  final release = Completer<void>();
+
+  @override
+  Future<String?> getString(String key) async {
+    if (key == backupLedgerKeyForUser(userId)) await release.future;
+    return super.getString(key);
+  }
 }
 
 class _RecordingClient extends PixelfoxApiClient {

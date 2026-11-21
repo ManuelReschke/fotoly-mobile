@@ -58,6 +58,8 @@ class BackupLedger {
   final Map<String, BackedUpEntry> _byFingerprint = {};
   int? _userId;
   bool _bound = false;
+  int? _loadingUserId;
+  Future<void>? _loading;
 
   /// True when memory has uploads or removals not yet written to prefs.
   bool _dirty = false;
@@ -79,22 +81,53 @@ class BackupLedger {
   ///
   /// A null id leaves memory unchanged so an offline open without a profile
   /// snapshot cannot replace the account ledger with the legacy key.
-  Future<void> ensureUser(int? userId) async {
-    if (userId == null || isBoundTo(userId)) return;
-    await load(userId: userId);
+  Future<void> ensureUser(int? userId) =>
+      userId == null ? Future<void>.value() : _loadUser(userId, force: false);
+
+  Future<void> load({int? userId}) => _loadUser(userId, force: true);
+
+  Future<void> _loadUser(int? userId, {required bool force}) async {
+    var inFlight = _loading;
+    while (inFlight != null) {
+      if (_loadingUserId == userId) return inFlight;
+      try {
+        await inFlight;
+      } catch (_) {
+        // A failed load for another account does not block this one.
+      }
+      inFlight = _loading;
+    }
+    if (!force && isBoundTo(userId)) return;
+
+    _loadingUserId = userId;
+    final pending = _readUser(userId);
+    _loading = pending;
+    try {
+      await pending;
+    } finally {
+      _loading = null;
+    }
   }
 
-  Future<void> load({int? userId}) async {
-    _userId = userId;
-    _bound = true;
-    _dirty = false;
-    _byFingerprint.clear();
+  Future<void> _readUser(int? userId) async {
     var raw = await _prefs.getString(backupLedgerKeyForUser(userId));
     if ((raw == null || raw.isEmpty) && userId != null) {
       raw = await _migrateLegacyLedger(userId);
     }
-    if (raw == null || raw.isEmpty) return;
-    _ingest(raw);
+    final entries = raw == null || raw.isEmpty ? null : jsonDecode(raw);
+    final loaded = <String, BackedUpEntry>{};
+    if (entries is List) {
+      for (final item in entries.whereType<Map>()) {
+        final entry = BackedUpEntry.fromJson(Map<String, dynamic>.from(item));
+        loaded[entry.fingerprint] = entry;
+      }
+    }
+    _byFingerprint
+      ..clear()
+      ..addAll(loaded);
+    _userId = userId;
+    _bound = true;
+    _dirty = false;
   }
 
   Future<String?> _migrateLegacyLedger(int userId) async {
@@ -103,20 +136,6 @@ class BackupLedger {
     await _prefs.setString(backupLedgerKeyForUser(userId), legacy);
     await _prefs.remove(kBackupLedgerKey);
     return legacy;
-  }
-
-  void _ingest(String raw) {
-    final decoded = jsonDecode(raw);
-    if (decoded is! List) return;
-    for (final item in decoded) {
-      if (item is Map<String, dynamic>) {
-        final entry = BackedUpEntry.fromJson(item);
-        _byFingerprint[entry.fingerprint] = entry;
-      } else if (item is Map) {
-        final entry = BackedUpEntry.fromJson(Map<String, dynamic>.from(item));
-        _byFingerprint[entry.fingerprint] = entry;
-      }
-    }
   }
 
   /// Records [file] as uploaded.

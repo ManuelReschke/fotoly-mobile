@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fotoly_mobile/models/pixelfox_album.dart';
 import 'package:fotoly_mobile/services/album_service.dart';
 import 'package:fotoly_mobile/services/pixelfox_api_client.dart';
+import 'package:http/http.dart' as http;
 
 import 'fake_api_http.dart';
 
@@ -88,4 +91,42 @@ void main() {
     expect(service.byId(4)?.coverStableUrl, 'https://example/new.jpg');
     expect(service.byId(4)?.title, 'Trip 2');
   });
+
+  test('disposal ignores a late album list and closes its client', () async {
+    final response = Completer<http.Response>();
+    final client = _AlbumListClient(response.future);
+    final service = AlbumService(clientProvider: () => client);
+    final refresh = service.refresh();
+    service.dispose();
+    response.complete(
+      http.Response('{"albums":[{"id":1,"title":"Trip"}]}', 200),
+    );
+    await refresh;
+
+    expect(service.albums, isEmpty);
+    expect(client.closed, isTrue);
+  });
+}
+
+class _AlbumListClient extends PixelfoxApiClient {
+  _AlbumListClient(Future<http.Response> response)
+    : super(apiKey: 'k', httpClient: _HeldAlbumListHttp(response));
+
+  bool closed = false;
+
+  @override
+  void close() {
+    closed = true;
+    super.close();
+  }
+}
+
+class _HeldAlbumListHttp extends FakeApiHttp {
+  _HeldAlbumListHttp(this.response);
+
+  final Future<http.Response> response;
+
+  @override
+  Future<http.Response> get(Uri url, {Map<String, String>? headers}) =>
+      response;
 }

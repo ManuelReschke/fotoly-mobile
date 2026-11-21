@@ -10,6 +10,7 @@ class AlbumService extends ChangeNotifier {
   final PixelfoxApiClient Function() _clientProvider;
 
   List<PixelfoxAlbum> _albums = [];
+  bool _disposed = false;
   bool _loaded = false;
   bool _loading = false;
   String? _error;
@@ -23,6 +24,21 @@ class AlbumService extends ChangeNotifier {
   bool get loading => _loading;
   String? get error => _error;
   String? get snackMessage => _snackMessage;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+
+  Future<T> _request<T>(Future<T> Function(PixelfoxApiClient) send) async {
+    final client = _clientProvider();
+    try {
+      return await send(client);
+    } finally {
+      client.close();
+    }
+  }
 
   PixelfoxAlbum? byId(int id) {
     for (final album in _albums) {
@@ -43,15 +59,18 @@ class AlbumService extends ChangeNotifier {
   }
 
   Future<void> refresh() async {
-    if (_loading) return;
+    if (_disposed || _loading) return;
     _loading = true;
     notifyListeners();
     try {
-      _albums = await _clientProvider().listAlbums();
+      final albums = await _request((client) => client.listAlbums());
+      if (_disposed) return;
+      _albums = albums;
       _loaded = true;
       _error = null;
       _snackMessage = null;
     } catch (e) {
+      if (_disposed) return;
       final message = e is PixelfoxApiException ? e.message : e.toString();
       if (_loaded) {
         _snackMessage = message;
@@ -60,24 +79,25 @@ class AlbumService extends ChangeNotifier {
       }
     } finally {
       _loading = false;
-      notifyListeners();
+      if (!_disposed) notifyListeners();
     }
   }
 
   Future<PixelfoxAlbum> create(AlbumInput input) async {
-    final created = await _clientProvider().createAlbum(input);
+    final created = await _request((client) => client.createAlbum(input));
     _upsert(created);
     return created;
   }
 
   Future<PixelfoxAlbum> update(int id, AlbumInput input) async {
-    final updated = await _clientProvider().updateAlbum(id, input);
+    final updated = await _request((client) => client.updateAlbum(id, input));
     _upsert(updated);
     return updated;
   }
 
   Future<void> delete(int id) async {
-    await _clientProvider().deleteAlbum(id);
+    await _request((client) => client.deleteAlbum(id));
+    if (_disposed) return;
     _albums = _albums.where((album) => album.id != id).toList();
     _assignedCategories.remove(id);
     notifyListeners();
@@ -93,7 +113,7 @@ class AlbumService extends ChangeNotifier {
   }
 
   Future<List<AlbumMember>> members(int albumId) {
-    return _clientProvider().listAlbumMembers(albumId);
+    return _request((client) => client.listAlbumMembers(albumId));
   }
 
   Future<AlbumMemberInvite> inviteMember(
@@ -102,24 +122,26 @@ class AlbumService extends ChangeNotifier {
     String? username,
     String? email,
   }) {
-    return _clientProvider().inviteAlbumMember(
-      albumId,
-      userId: userId,
-      username: username,
-      email: email,
+    return _request(
+      (client) => client.inviteAlbumMember(
+        albumId,
+        userId: userId,
+        username: username,
+        email: email,
+      ),
     );
   }
 
   Future<void> removeMember(int albumId, int userId) {
-    return _clientProvider().removeAlbumMember(albumId, userId);
+    return _request((client) => client.removeAlbumMember(albumId, userId));
   }
 
   Future<List<AlbumCategory>> listCategories() {
-    return _clientProvider().listAlbumCategories();
+    return _request((client) => client.listAlbumCategories());
   }
 
   Future<AlbumCategory> createCategory(String name) {
-    return _clientProvider().createAlbumCategory(name);
+    return _request((client) => client.createAlbumCategory(name));
   }
 
   Future<List<AlbumCategory>> setCategories(
@@ -127,11 +149,14 @@ class AlbumService extends ChangeNotifier {
     required List<int> privateCategoryIds,
     required List<int> publicCategoryIds,
   }) async {
-    final selected = await _clientProvider().setAlbumCategories(
-      albumId,
-      privateCategoryIds: privateCategoryIds,
-      publicCategoryIds: publicCategoryIds,
+    final selected = await _request(
+      (client) => client.setAlbumCategories(
+        albumId,
+        privateCategoryIds: privateCategoryIds,
+        publicCategoryIds: publicCategoryIds,
+      ),
     );
+    if (_disposed) return selected;
     _assignedCategories[albumId] = selected;
     notifyListeners();
     return selected;
@@ -144,6 +169,7 @@ class AlbumService extends ChangeNotifier {
   }
 
   void _upsert(PixelfoxAlbum album) {
+    if (_disposed) return;
     final next = _albums.where((item) => item.id != album.id).toList()
       ..add(album);
     next.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));

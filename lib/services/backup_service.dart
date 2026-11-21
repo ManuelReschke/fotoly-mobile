@@ -86,6 +86,8 @@ class BackupService extends ChangeNotifier {
   /// Minimum gap between quiet/automatic inventory scans.
   final Duration minAutoInventoryInterval;
 
+  // Covers preparation and cleanup as well as the progress shown in the UI.
+  bool _jobInProgress = false;
   bool _running = false;
   bool _fullSyncRunning = false;
   int _fullSyncChecked = 0;
@@ -534,7 +536,7 @@ class BackupService extends ChangeNotifier {
   bool get _canReachServer => _serverReachable?.call() ?? true;
 
   Future<FullSyncResult> fullSyncRemote() async {
-    if (_running || _fullSyncRunning) {
+    if (_jobInProgress) {
       return FullSyncResult.busyResult;
     }
     if (!_canReachServer) {
@@ -547,6 +549,15 @@ class BackupService extends ChangeNotifier {
         offline: true,
       );
     }
+    _jobInProgress = true;
+    try {
+      return await _runFullSync();
+    } finally {
+      _jobInProgress = false;
+    }
+  }
+
+  Future<FullSyncResult> _runFullSync() async {
     await _ensureLedger();
 
     _fullSyncRunning = true;
@@ -633,12 +644,21 @@ class BackupService extends ChangeNotifier {
 
   /// Start backup of **pending** images only (skips already secured).
   Future<BackupStatus> startBackup() async {
-    if (_running || _fullSyncRunning) return status;
+    if (_jobInProgress) return status;
     if (!_canReachServer) {
       _errorMessage = BackupErrorCodes.offline;
       notifyListeners();
       return status;
     }
+    _jobInProgress = true;
+    try {
+      return await _runBackup();
+    } finally {
+      _jobInProgress = false;
+    }
+  }
+
+  Future<BackupStatus> _runBackup() async {
     await _ensureLedger();
 
     // Wait out quiet/manual inventory so we do not double-walk the tree or
@@ -651,8 +671,6 @@ class BackupService extends ChangeNotifier {
     _inventoryPending = false;
     _inventoryPendingQuiet = true;
     _inventoryPendingThrottle = true;
-
-    if (_running) return status;
 
     final folders = _settings.folders;
     if (folders.isEmpty) {

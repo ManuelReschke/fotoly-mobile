@@ -367,6 +367,29 @@ void main() {
     expect(service.items.single.imageUuid, 'fresh');
     expect(service.loading, isFalse);
   });
+
+  test('disposal ignores a late page and drops queued refreshes', () async {
+    final gate = Completer<http.Response>();
+    final held = _HeldImagesHttp([gate]);
+    final prefs = MemoryPrefsStore();
+    final service = GalleryService(
+      clientProvider: () => PixelfoxApiClient(apiKey: 'k', httpClient: held),
+      prefs: prefs,
+      userId: () => 42,
+    );
+    final refresh = service.refresh();
+    await Future<void>.delayed(Duration.zero);
+    expect(held.urls, hasLength(1));
+    final queued = service.refresh();
+    service.dispose();
+    gate.complete(http.Response(imagesFixture, 200));
+    await Future.wait([refresh, queued]);
+
+    expect(held.urls, hasLength(1));
+    expect(service.items, isEmpty);
+    final key = AppBrand.current.galleryPageCacheKey(42, GallerySort.desc.name);
+    expect(await prefs.getString(key), isNull);
+  });
 }
 
 class _HeldImagesHttp implements ApiHttp {
